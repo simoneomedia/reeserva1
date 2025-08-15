@@ -3,14 +3,14 @@
 /**
  * Plugin Name: Reeserva Booking Suite
  * Description: Minimal base plugin with GitHub self-updater wired to simoneomedia/reeserva1.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Reeserva
  * Text Domain: reeserva
  * Update URI: https://github.com/simoneomedia/reeserva1
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define('RSV_VER','1.0.0');
+define('RSV_VER','1.0.1');
 define('RSV_PATH', plugin_dir_path(__FILE__));
 define('RSV_URL',  plugin_dir_url(__FILE__));
 
