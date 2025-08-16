@@ -4,7 +4,8 @@
         nonceBooked = RSV_ADMIN.nonceBooked,
         nonceLoad   = RSV_ADMIN.nonceLoad,
         nonceDay    = RSV_ADMIN.nonceDay,
-        nonceUpdate = RSV_ADMIN.nonceUpdate;
+        nonceUpdate = RSV_ADMIN.nonceUpdate,
+        nonceReset  = RSV_ADMIN.nonceReset;
   const selectEl = document.getElementById('accommodation-select');
   const summaryBody = document.getElementById('summary-body');
   const priceModal = document.getElementById('price-modal');
@@ -21,6 +22,7 @@
   const createBtn = document.getElementById('create-admin-booking');
   const syncBtn = document.getElementById('rsv-sync-ical');
   const syncRes = document.getElementById('rsv-sync-result');
+  const resetBtn = document.getElementById('reset-prices');
 
   let currentType = parseInt(selectEl ? selectEl.value : 0,10);
   let selectedRange = null;
@@ -194,6 +196,19 @@
         if(res && res.success){ syncRes.textContent='Imported '+(res.data && res.data.added ? res.data.added : 0)+' events.'; calendar.refetchEvents(); }
         else { syncRes.textContent='iCal sync failed'; }
       }).catch(()=> syncRes.textContent='Network error');
+    });
+  }
+
+  if(resetBtn){
+    resetBtn.addEventListener('click', ()=>{
+      const form = new FormData();
+      form.append('action','rsv_reset_prices');
+      form.append('nonce',nonceReset);
+      form.append('type_id',currentType);
+      fetch(ajax,{method:'POST',body:form,credentials:'same-origin'}).then(r=>r.json()).then(res=>{
+        if(res && res.success){ calendar.refetchEvents(); }
+        else{ alert('Failed to reset prices'); }
+      }).catch(()=> alert('Network error'));
     });
   }
 })();

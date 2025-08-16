@@ -51,6 +51,7 @@ function rsv_load_prices(){
                 'allDay'=> true,
                 'backgroundColor' => 'transparent',
                 'borderColor'     => 'transparent',
+                'textColor'       => '#000',
                 'isPrice'         => true,
             ];
         }
@@ -152,9 +153,23 @@ function rsv_update_price(){
 
     $existing_prices = get_post_meta($rid,'rsv_season_prices', true);
     $existing_prices = is_array($existing_prices) ? $existing_prices : [];
-    $indexed = [];
+
+    // Remove seasons overlapping the updated range
+    $filtered = [];
     foreach($existing_prices as $ent){
-        if(isset($ent['season'])) $indexed[ $ent['season'] ] = $ent;
+        $sid = $ent['season'] ?? 0;
+        if(!$sid) continue;
+        $sd = get_post_meta($sid,'rsv_start_date',true);
+        $ed = get_post_meta($sid,'rsv_end_date',true);
+        if($sd && $ed && !($ed < $start_date || $sd > $end_date)){
+            wp_delete_post($sid, true);
+            continue;
+        }
+        $filtered[] = $ent;
+    }
+    $indexed = [];
+    foreach($filtered as $ent){
+        if(isset($ent['season'])) $indexed[$ent['season']] = $ent;
     }
     foreach($seasonal as $sid=>$ent){ $indexed[$sid] = $ent; }
     update_post_meta($rid,'rsv_season_prices', array_values($indexed));
@@ -163,10 +178,31 @@ function rsv_update_price(){
 
     $events = array_map(function($sid) use($base_prices){
         $d = get_post_meta($sid,'rsv_start_date',true);
-        return ['title'=>'€'.number_format(floatval($base_prices[0] ?? 0),0),'start'=>$d,'allDay'=>true,'backgroundColor'=>'transparent','borderColor'=>'transparent','isPrice'=>true];
+        return ['title'=>'€'.number_format(floatval($base_prices[0] ?? 0),0),'start'=>$d,'allDay'=>true,'backgroundColor'=>'transparent','borderColor'=>'transparent','textColor'=>'#000','isPrice'=>true];
     }, $season_ids);
 
     wp_send_json_success(['events'=>$events]);
+}
+
+// Reset prices for a type
+add_action('wp_ajax_rsv_reset_prices','rsv_reset_prices');
+function rsv_reset_prices(){
+    check_ajax_referer('rsv_reset_prices','nonce');
+    $type_id = intval($_POST['type_id'] ?? 0);
+    if(!$type_id){ wp_send_json_error(['message'=>'missing']); }
+    $rate = get_posts(['post_type'=>'rsv_rate','post_status'=>'publish','numberposts'=>1,
+        'meta_query'=>[['key'=>'rsv_accomm_id','value'=>$type_id,'compare'=>'=']]]);
+    if($rate){
+        $rid = $rate[0]->ID;
+        $ids = get_post_meta($rid,'rsv_season_ids',true);
+        if(is_array($ids)){
+            foreach($ids as $sid){ wp_delete_post(intval($sid), true); }
+        }
+        delete_post_meta($rid,'rsv_season_prices');
+        delete_post_meta($rid,'rsv_season_ids');
+        delete_post_meta($rid,'rsv_base_price');
+    }
+    wp_send_json_success();
 }
 
 // Admin new booking quicklink (optional)
