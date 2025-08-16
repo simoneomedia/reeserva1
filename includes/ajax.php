@@ -19,6 +19,8 @@ function rsv_get_booked(){
             'title' => get_post_meta($post->ID,'rsv_guest_name',true) ?: __('Booking','reeserva'),
             'start' => $ci,
             'end'   => $co,
+            'id'    => $post->ID,
+            'edit_link' => get_edit_post_link($post->ID,'')
         ];
     }
     wp_send_json_success($events);
@@ -47,8 +49,8 @@ function rsv_load_prices(){
                 'start' => $sd,
                 'end'   => (new DateTime($ed))->modify('+1 day')->format('Y-m-d'),
                 'allDay'=> true,
-                'backgroundColor' => '#e6f7ed',
-                'borderColor'     => '#e6f7ed',
+                'backgroundColor' => 'transparent',
+                'borderColor'     => 'transparent',
                 'isPrice'         => true,
             ];
         }
@@ -161,7 +163,7 @@ function rsv_update_price(){
 
     $events = array_map(function($sid) use($base_prices){
         $d = get_post_meta($sid,'rsv_start_date',true);
-        return ['title'=>'€'.number_format(floatval($base_prices[0] ?? 0),0),'start'=>$d,'allDay'=>true,'backgroundColor'=>'#e6f7ed','borderColor'=>'#e6f7ed','isPrice'=>true];
+        return ['title'=>'€'.number_format(floatval($base_prices[0] ?? 0),0),'start'=>$d,'allDay'=>true,'backgroundColor'=>'transparent','borderColor'=>'transparent','isPrice'=>true];
     }, $season_ids);
 
     wp_send_json_success(['events'=>$events]);

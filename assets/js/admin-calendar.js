@@ -8,6 +8,9 @@
   const selectEl = document.getElementById('accommodation-select');
   const summaryBody = document.getElementById('summary-body');
   const priceModal = document.getElementById('price-modal');
+  const bookingModal = document.getElementById('booking-modal');
+  const bookingInfo = document.getElementById('booking-info');
+  const bookingEdit = document.getElementById('booking-edit');
   const selectedDates = document.getElementById('selected-dates');
   const warningEl = document.getElementById('price-warning');
   const baseBox = document.getElementById('base-periods');
@@ -36,7 +39,8 @@
       const data = json.data || [];
       success(data.map(e=> ({
         title: e.title, start: e.start, end: e.end, allDay:true,
-        backgroundColor:'#fee2e2', borderColor:'#fee2e2', classNames:['rsv-booking']
+        backgroundColor:'#dc2626', borderColor:'#dc2626', classNames:['rsv-booking'],
+        extendedProps:{editLink:e.edit_link}
       })));
       // summary
       summaryBody.innerHTML='';
@@ -67,11 +71,22 @@
         start: info.startStr,
         end: new Date(new Date(info.endStr)-86400000).toISOString().split('T')[0]
       };
+      const singleDay = selectedRange.start===selectedRange.end;
+      const booking = calendar.getEvents().find(ev=>
+        ev.classNames && ev.classNames.indexOf('rsv-booking')>-1 &&
+        selectedRange.start >= ev.startStr && selectedRange.start < ev.endStr
+      );
+      if(singleDay && booking){
+        calendar.unselect();
+        bookingInfo.textContent = booking.title+' ('+fmtRange(booking.startStr, new Date(new Date(booking.endStr)-86400000).toISOString().split('T')[0])+')';
+        if(bookingEdit) bookingEdit.href = booking.extendedProps && booking.extendedProps.editLink ? booking.extendedProps.editLink : '#';
+        bookingModal.classList.add('open');
+        return;
+      }
       selectedDates.textContent = fmtRange(selectedRange.start, selectedRange.end);
       warningEl.style.display='none'; baseBox.innerHTML=''; varsCt.innerHTML='';
       addTier(1,0); // default first tier
-      // If single day, try load existing
-      if(selectedRange.start===selectedRange.end){
+      if(singleDay){
         const qs = new URLSearchParams({action:'rsv_day_prices',nonce:nonceDay,type_id:currentType,start:selectedRange.start});
         fetch(ajax+'?'+qs,{credentials:'same-origin'}).then(r=>r.json()).then(d=>{
           if(d && d.status==='single'){
@@ -84,13 +99,14 @@
           }
         });
       }
+      calendar.unselect();
       priceModal.classList.add('open');
     }
   });
   calendar.render();
 
   if(selectEl){ selectEl.addEventListener('change', ()=>{ currentType = parseInt(selectEl.value,10); calendar.refetchEvents(); }); }
-  document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', ()=> priceModal.classList.remove('open')));
+  document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', ()=> btn.closest('.modal-overlay').classList.remove('open')));
 
   function addTier(nights, price){
     const row=document.createElement('div'); row.className='period-row';

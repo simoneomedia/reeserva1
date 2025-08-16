@@ -70,6 +70,14 @@ function rsv_render_calendar(){
           </div>
         </div>
       </div>
+      <div id="booking-modal" class="modal-overlay" aria-modal="true">
+        <div class="modal-content">
+          <button class="modal-close" aria-label="<?php esc_attr_e('Close','reeserva')?>">×</button>
+          <h2><?php esc_html_e('Reservation','reeserva');?></h2>
+          <div id="booking-info"></div>
+          <a id="booking-edit" href="#" class="button button-primary" target="_blank"><?php esc_html_e('Edit Booking','reeserva');?></a>
+        </div>
+      </div>
     </div>
     <?php
 }
