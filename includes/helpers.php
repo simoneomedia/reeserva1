@@ -43,6 +43,11 @@ function rsv_is_accomm_available($accomm_id, $start, $end){
         $bco = get_post_meta($bk->ID,'rsv_check_out',true);
         if($bci && $bco && rsv_date_range_overlaps($start,$end,$bci,$bco)) return false;
     }
+    $period = new DatePeriod(new DateTime($start), new DateInterval('P1D'), new DateTime($end));
+    foreach($period as $day){
+        $map = rsv_pricing_map_for_day($accomm_id, $day->format('Y-m-d'));
+        if(empty($map['prices'])) return false;
+    }
     return true;
 }
 function rsv_make_ics($args){
@@ -71,6 +76,9 @@ function rsv_pricing_map_for_day($accomm_id, $day){
             $sd = get_post_meta($sid,'rsv_start_date',true);
             $ed = get_post_meta($sid,'rsv_end_date',true);
             if($sd && $ed && $day >= $sd && $day <= $ed){
+                if(!empty($e['blocked']) || empty($e['price']) || empty($e['price']['prices'])){
+                    return ['periods'=>[], 'prices'=>[]];
+                }
                 $periods = array_map('intval',(array)($e['price']['periods'] ?? []));
                 $prices  = array_map('floatval',(array)($e['price']['prices']  ?? []));
                 return ['periods'=>$periods,'prices'=>$prices];
