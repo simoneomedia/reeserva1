@@ -21,6 +21,15 @@ function RSV_register_cpts(){
         'label'=>__('Rate','reeserva'),
         'public'=>false,'show_ui'=>false,'supports'=>['title'],
     ]);
+    register_post_status('confirmed',[
+        'label'                     => _x('Confirmed','post status','reeserva'),
+        'public'                    => true,
+        'exclude_from_search'       => false,
+        'show_in_admin_all_list'    => true,
+        'show_in_admin_status_list' => true,
+        'label_count'               => _n_noop('Confirmed <span class="count">(%s)</span>',
+                                             'Confirmed <span class="count">(%s)</span>','reeserva'),
+    ]);
 }
 add_action('init','RSV_register_cpts');
 
@@ -78,4 +87,62 @@ add_action('save_post_rsv_accomm', function($post_id){
         $lines = array_filter(array_map('trim', explode("\n", wp_kses_post($_POST['rsv_ical_sources']) )));
         update_post_meta($post_id,'rsv_ical_sources',$lines);
     }
+});
+
+// Meta box for Booking
+add_action('add_meta_boxes', function(){
+    add_meta_box('rsv_booking_meta', __('Booking details','reeserva'),'rsv_render_booking_meta','rsv_booking','normal','high');
+});
+function rsv_render_booking_meta($post){
+    $accomm = intval(get_post_meta($post->ID,'rsv_booking_accomm',true));
+    $ci = esc_attr(get_post_meta($post->ID,'rsv_check_in',true));
+    $co = esc_attr(get_post_meta($post->ID,'rsv_check_out',true));
+    $name = esc_attr(get_post_meta($post->ID,'rsv_guest_name',true));
+    $email = esc_attr(get_post_meta($post->ID,'rsv_guest_email',true));
+    $pay = esc_attr(get_post_meta($post->ID,'rsv_payment_status',true));
+    $types = get_posts(['post_type'=>'rsv_accomm','post_status'=>'publish','numberposts'=>-1]);
+    ?>
+    <p><label><?php esc_html_e('Accommodation','reeserva');?>
+        <select name="rsv_booking_accomm">
+            <option value="0"><?php esc_html_e('- Select -','reeserva');?></option>
+            <?php foreach($types as $t): ?>
+                <option value="<?php echo esc_attr($t->ID);?>" <?php selected($accomm,$t->ID);?>><?php echo esc_html(get_the_title($t));?></option>
+            <?php endforeach; ?>
+        </select>
+    </label></p>
+    <p><label><?php esc_html_e('Check-in','reeserva');?> <input type="date" name="rsv_check_in" value="<?php echo $ci;?>"></label></p>
+    <p><label><?php esc_html_e('Check-out','reeserva');?> <input type="date" name="rsv_check_out" value="<?php echo $co;?>"></label></p>
+    <p><label><?php esc_html_e('Guest name','reeserva');?> <input type="text" name="rsv_guest_name" value="<?php echo $name;?>"></label></p>
+    <p><label><?php esc_html_e('Guest email','reeserva');?> <input type="email" name="rsv_guest_email" value="<?php echo $email;?>"></label></p>
+    <p><label><?php esc_html_e('Payment status','reeserva');?> <input type="text" name="rsv_payment_status" value="<?php echo $pay;?>"></label></p>
+    <?php
+}
+add_action('save_post_rsv_booking', function($post_id){
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    update_post_meta($post_id,'rsv_booking_accomm', intval($_POST['rsv_booking_accomm'] ?? 0));
+    update_post_meta($post_id,'rsv_check_in', sanitize_text_field($_POST['rsv_check_in'] ?? ''));
+    update_post_meta($post_id,'rsv_check_out', sanitize_text_field($_POST['rsv_check_out'] ?? ''));
+    update_post_meta($post_id,'rsv_guest_name', sanitize_text_field($_POST['rsv_guest_name'] ?? ''));
+    update_post_meta($post_id,'rsv_guest_email', sanitize_email($_POST['rsv_guest_email'] ?? ''));
+    update_post_meta($post_id,'rsv_payment_status', sanitize_text_field($_POST['rsv_payment_status'] ?? ''));
+});
+
+// Append booking details on single booking pages
+add_filter('the_content', function($content){
+    if('rsv_booking' !== get_post_type()) return $content;
+    $ac = intval(get_post_meta(get_the_ID(),'rsv_booking_accomm',true));
+    $ci = get_post_meta(get_the_ID(),'rsv_check_in',true);
+    $co = get_post_meta(get_the_ID(),'rsv_check_out',true);
+    $name = get_post_meta(get_the_ID(),'rsv_guest_name',true);
+    $email = get_post_meta(get_the_ID(),'rsv_guest_email',true);
+    $pay = get_post_meta(get_the_ID(),'rsv_payment_status',true);
+    $out = '<h3>'.esc_html__('Booking details','reeserva').'</h3><ul class="rsv-booking-details">';
+    if($ac) $out .= '<li><strong>'.esc_html__('Accommodation','reeserva').':</strong> '.esc_html(get_the_title($ac)).'</li>';
+    if($ci) $out .= '<li><strong>'.esc_html__('Check-in','reeserva').':</strong> '.esc_html($ci).'</li>';
+    if($co) $out .= '<li><strong>'.esc_html__('Check-out','reeserva').':</strong> '.esc_html($co).'</li>';
+    if($name) $out .= '<li><strong>'.esc_html__('Guest','reeserva').':</strong> '.esc_html($name).'</li>';
+    if($email) $out .= '<li><strong>'.esc_html__('Email','reeserva').':</strong> '.esc_html($email).'</li>';
+    if($pay) $out .= '<li><strong>'.esc_html__('Payment','reeserva').':</strong> '.esc_html($pay).'</li>';
+    $out .= '</ul>';
+    return $content.$out;
 });

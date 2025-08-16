@@ -8,7 +8,7 @@ function rsv_get_booked(){
     check_ajax_referer('rsv_get_booked','nonce');
     $type_id = intval($_GET['type_id'] ?? 0);
     if(!$type_id){ wp_send_json_success([]); }
-    $posts = get_posts([ 'post_type'=>'rsv_booking','post_status'=>['confirmed','publish'],'numberposts'=>-1,
+    $posts = get_posts([ 'post_type'=>'rsv_booking','post_status'=>['confirmed','publish','pending'],'numberposts'=>-1,
         'meta_query'=>[['key'=>'rsv_booking_accomm','value'=>$type_id,'compare'=>'=']] ]);
     $events=[];
     foreach($posts as $post){
