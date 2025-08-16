@@ -29,6 +29,22 @@ function rsv_checkout_url(){
 function rsv_date_range_overlaps($startA, $endA, $startB, $endB){
     return (strtotime($startA) < strtotime($endB)) && (strtotime($endA) > strtotime($startB));
 }
+function rsv_is_accomm_available($accomm_id, $start, $end){
+    $bookings = get_posts([
+        'post_type'   => 'rsv_booking',
+        'numberposts' => -1,
+        'post_status' => ['publish','confirmed','pending'],
+        'meta_query'  => [
+            ['key'=>'rsv_booking_accomm','value'=>$accomm_id,'compare'=>'=']
+        ]
+    ]);
+    foreach($bookings as $bk){
+        $bci = get_post_meta($bk->ID,'rsv_check_in',true);
+        $bco = get_post_meta($bk->ID,'rsv_check_out',true);
+        if($bci && $bco && rsv_date_range_overlaps($start,$end,$bci,$bco)) return false;
+    }
+    return true;
+}
 function rsv_make_ics($args){
     $uid = uniqid('rsv_', true).'@'.parse_url(home_url(), PHP_URL_HOST);
     $dtstamp = gmdate('Ymd\THis\Z');
