@@ -13,6 +13,7 @@ function rsv_admin_enqueue(){
         'nonceLoad'  => wp_create_nonce('rsv_load_prices'),
         'nonceDay'   => wp_create_nonce('rsv_day_prices'),
         'nonceUpdate'=> wp_create_nonce('rsv_update_price'),
+        'nonceReset' => wp_create_nonce('rsv_reset_prices'),
     ]);
 }
 add_action('admin_enqueue_scripts','rsv_admin_enqueue');
@@ -35,6 +36,8 @@ function rsv_render_calendar(){
         <span id="rsv-sync-result" style="color:#555"></span>
       </div>
       <div id="calendar"></div>
+
+      <button class="button" id="reset-prices"><?php esc_html_e('Reset prices','reeserva');?></button>
 
       <div class="booking-summary">
         <h3><?php esc_html_e('Reserved Dates','reeserva')?></h3>
