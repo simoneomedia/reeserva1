@@ -16,9 +16,10 @@
 #calendar { max-width:1000px; background:#fff; border:1px solid #eee; border-radius:12px; padding:8px; }
 
 /* subtle chips on calendar */
-.fc-event.price-event { z-index:1 !important; position:absolute; inset:2px 4px auto 4px; border:none; background:transparent !important; color:#000 !important; font-weight:600; border-radius:8px; padding:2px 6px; pointer-events:none; }
+.fc-event.price-event { z-index:1 !important; position:absolute; top:2px !important; left:4px; right:4px; border:none; background:transparent !important; color:#000 !important; font-weight:600; border-radius:8px; padding:2px 6px; pointer-events:none; }
 .fc-event.rsv-booking { background:#dc2626 !important; border:none; color:#fff !important; border-radius:6px; z-index:1 !important; pointer-events:none; }
-.fc-daygrid-day-frame { position: relative; }
+.fc-daygrid-day-frame { position: relative; min-height:90px; }
+.fc-daygrid-day-events { margin-top:20px; }
 
 .modal-overlay { position:fixed; inset:0; background:var(--modal-bg); display:none; align-items:center; justify-content:center; z-index:100000; }
 .modal-overlay.open { display:flex; }
