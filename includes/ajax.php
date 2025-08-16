@@ -53,7 +53,7 @@ function rsv_load_prices(){
             ];
         }
     }
-    wp_send_json($events);
+    wp_send_json_success($events);
 }
 
 // Get prices for a single day

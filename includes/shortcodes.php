@@ -3,21 +3,38 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 add_shortcode('rsv_search', function(){
-    $types = get_posts(['post_type'=>'rsv_accomm','post_status'=>'publish','numberposts'=>-1]);
-    $action = esc_url( rsv_checkout_url() );
+    $ci = sanitize_text_field($_GET['ci'] ?? '');
+    $co = sanitize_text_field($_GET['co'] ?? '');
+    $guests = intval($_GET['guests'] ?? 0);
     ob_start(); ?>
-    <form class="ehb-search-form" method="get" action="<?php echo $action; ?>" style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
-      <input type="hidden" name="step" value="1">
-      <label><?php esc_html_e('Accommodation','reeserva'); ?>
-        <select name="accomm" required>
-          <?php foreach($types as $t): ?><option value="<?php echo esc_attr($t->ID); ?>"><?php echo esc_html(get_the_title($t)); ?></option><?php endforeach; ?>
-        </select>
-      </label>
-      <label><?php esc_html_e('Check-in','reeserva'); ?> <input type="date" name="ci" required></label>
-      <label><?php esc_html_e('Check-out','reeserva'); ?> <input type="date" name="co" required></label>
+    <form class="ehb-search-form" method="get" style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
+      <label><?php esc_html_e('Guests','reeserva'); ?> <input type="number" name="guests" value="<?php echo esc_attr($guests); ?>" min="1" required></label>
+      <label><?php esc_html_e('Check-in','reeserva'); ?> <input type="date" name="ci" value="<?php echo esc_attr($ci); ?>" required></label>
+      <label><?php esc_html_e('Check-out','reeserva'); ?> <input type="date" name="co" value="<?php echo esc_attr($co); ?>" required></label>
       <button type="submit"><?php esc_html_e('Search','reeserva'); ?></button>
     </form>
-    <?php return ob_get_clean();
+    <?php
+    if($ci && $co && $guests){
+        $types = get_posts(['post_type'=>'rsv_accomm','post_status'=>'publish','numberposts'=>-1]);
+        echo '<div class="rsv-results" style="display:grid;gap:20px">';
+        $found=false;
+        foreach($types as $t){
+            $max = (int) get_post_meta($t->ID,'rsv_max_guests',true);
+            if($max < $guests) continue;
+            if(!rsv_is_accomm_available($t->ID,$ci,$co)) continue;
+            $found=true;
+            $url = add_query_arg(['step'=>2,'accomm'=>$t->ID,'ci'=>$ci,'co'=>$co], rsv_checkout_url());
+            echo '<div class="rsv-result" style="border:1px solid #ddd;padding:10px;border-radius:6px">';
+            $thumb = get_the_post_thumbnail($t->ID,'medium',['style'=>'width:100%;height:auto;border-radius:4px']);
+            if($thumb) echo $thumb;
+            echo '<h3>'.esc_html(get_the_title($t)).'</h3>';
+            echo '<p><a class="btn-primary" href="'.esc_url($url).'">'.esc_html__('Book','reeserva').'</a></p>';
+            echo '</div>';
+        }
+        if(!$found) echo '<p>'.esc_html__('No accommodations found','reeserva').'</p>';
+        echo '</div>';
+    }
+    return ob_get_clean();
 });
 
 add_shortcode('rsv_checkout', function(){
@@ -36,23 +53,28 @@ add_shortcode('rsv_checkout', function(){
             $accomm_id = intval($_GET['accomm'] ?? 0);
             $ci = sanitize_text_field($_GET['ci'] ?? '');
             $co = sanitize_text_field($_GET['co'] ?? '');
-            $name = sanitize_text_field($_GET['name'] ?? '');
+            $first = sanitize_text_field($_GET['first_name'] ?? '');
+            $last  = sanitize_text_field($_GET['last_name'] ?? '');
             $email = sanitize_email($_GET['email'] ?? '');
-            $notes='';
+            $phone = sanitize_text_field($_GET['phone'] ?? '');
+            $notes = sanitize_text_field($_GET['notes'] ?? '');
+            $full = trim($first.' '.$last);
             // Create booking if not exists with same session id
             $exists = get_posts(['post_type'=>'rsv_booking','post_status'=>['confirmed','publish'],'numberposts'=>1,
                 'meta_query'=>[['key'=>'rsv_stripe_session','value'=>sanitize_text_field($_GET['session_id']),'compare'=>'=']]]);
             if(!$exists){
-                $bid = wp_insert_post(['post_type'=>'rsv_booking','post_status'=>'confirmed','post_title'=>sprintf(__('Booking: %s','reeserva'), $name),'post_content'=>$notes]);
+                $bid = wp_insert_post(['post_type'=>'rsv_booking','post_status'=>'confirmed','post_title'=>sprintf(__('Booking: %s %s','reeserva'), $first,$last),'post_content'=>$notes]);
                 if(!is_wp_error($bid) && $bid){
                     update_post_meta($bid,'rsv_booking_accomm',$accomm_id);
                     update_post_meta($bid,'rsv_check_in',$ci);
                     update_post_meta($bid,'rsv_check_out',$co);
-                    update_post_meta($bid,'rsv_guest_name',$name);
+                    update_post_meta($bid,'rsv_guest_name',$first);
+                    update_post_meta($bid,'rsv_guest_surname',$last);
                     update_post_meta($bid,'rsv_guest_email',$email);
+                    update_post_meta($bid,'rsv_guest_phone',$phone);
                     update_post_meta($bid,'rsv_payment_status','paid');
                     update_post_meta($bid,'rsv_stripe_session',sanitize_text_field($_GET['session_id']));
-                    do_action('rsv_booking_confirmed', $bid, ['accomm'=>$accomm_id,'ci'=>$ci,'co'=>$co,'name'=>$name,'email'=>$email]);
+                    do_action('rsv_booking_confirmed', $bid, ['accomm'=>$accomm_id,'ci'=>$ci,'co'=>$co,'first_name'=>$first,'last_name'=>$last,'email'=>$email,'phone'=>$phone]);
                     echo '<div class="confirm"><div class="badge">✔</div><h3>'.esc_html__('Booking confirmed','reeserva').'</h3>';
                     echo '<p><strong>'.esc_html__('Reference','reeserva').':</strong> '.intval($bid).'</p>';
                     echo '<a class="btn-secondary" href="'.esc_url( get_permalink($accomm_id) ).'">'.esc_html__('Back to listing','reeserva').'</a></div>';
@@ -72,16 +94,38 @@ add_shortcode('rsv_checkout', function(){
         return '';
     }
 
-    $is_available = function($accomm,$a,$b){
-        $bookings = get_posts(['post_type'=>'rsv_booking','numberposts'=>-1,'post_status'=>['publish','confirmed','pending'],
-            'meta_query'=>[['key'=>'rsv_booking_accomm','value'=>$accomm,'compare'=>'=']] ]);
-        foreach($bookings as $bk){
-            $bci=get_post_meta($bk->ID,'rsv_check_in',true);
-            $bco=get_post_meta($bk->ID,'rsv_check_out',true);
-            if(rsv_date_range_overlaps($a,$b,$bci,$bco)) return false;
+    $success_html = '';
+    $error_html = '';
+    if ($step === 2 && $_SERVER['REQUEST_METHOD'] === 'POST'){
+        $first = sanitize_text_field($_POST['first_name'] ?? '');
+        $last  = sanitize_text_field($_POST['last_name'] ?? '');
+        $email = sanitize_email($_POST['email'] ?? '');
+        $phone = sanitize_text_field($_POST['phone'] ?? '');
+        $notes = sanitize_textarea_field($_POST['notes'] ?? '');
+        if(!$first || !$last || !$email || !$phone){
+            $error_html = '<p class="error">'.esc_html__('Please fill all required fields.','reeserva').'</p>';
+        } elseif(!rsv_is_accomm_available($accomm_id,$ci,$co)){
+            $error_html = '<p class="error">'.esc_html__('Sorry, these dates are no longer available.','reeserva').'</p>';
+        } else {
+            $total = rsv_quote_total($accomm_id,$ci,$co);
+            $bid = wp_insert_post(['post_type'=>'rsv_booking','post_status'=>'confirmed','post_title'=>sprintf(__('Booking: %s %s','reeserva'), $first,$last),'post_content'=>$notes]);
+            if(!is_wp_error($bid) && $bid){
+                update_post_meta($bid,'rsv_booking_accomm',$accomm_id);
+                update_post_meta($bid,'rsv_check_in',$ci);
+                update_post_meta($bid,'rsv_check_out',$co);
+                update_post_meta($bid,'rsv_guest_name',$first);
+                update_post_meta($bid,'rsv_guest_surname',$last);
+                update_post_meta($bid,'rsv_guest_email',$email);
+                update_post_meta($bid,'rsv_guest_phone',$phone);
+                update_post_meta($bid,'rsv_payment_status','confirmed');
+                do_action('rsv_booking_confirmed',$bid,['accomm'=>$accomm_id,'ci'=>$ci,'co'=>$co,'first_name'=>$first,'last_name'=>$last,'email'=>$email,'phone'=>$phone,'total'=>$total]);
+                $success_html = '<div class="confirm"><div class="badge">✔</div><h3>'.esc_html__('Booking confirmed','reeserva').'</h3><p><strong>'.esc_html__('Reference','reeserva').':</strong> '.intval($bid).'</p><a class="btn-secondary" href="'.esc_url(get_permalink($accomm_id)).'">'.esc_html__('Back to listing','reeserva').'</a></div>';
+            } else {
+                $error_html = '<p class="error">'.esc_html__('Could not create booking. Please try again.','reeserva').'</p>';
+            }
         }
-        return true;
-    };
+        $step = 3;
+    }
 
     ob_start();
     echo '<div class="ehb-wizard">';
@@ -106,62 +150,30 @@ add_shortcode('rsv_checkout', function(){
     if ($step === 2) {
         echo '<div class="card"><h2>'.esc_html__('Guest details','reeserva').'</h2>';
         echo '<div class="summary">'.esc_html(get_the_title($accomm_id)).' • '.esc_html($ci).' → '.esc_html($co).'</div>';
-        if (!$is_available($accomm_id,$ci,$co)) { echo '<p class="error">'.esc_html__('Sorry, these dates are no longer available.','reeserva').'</p></div></div>'; return ob_get_clean(); }
-        echo '<form method="post" class="form-grid">';
-        echo '<input type="hidden" name="step" value="3"><input type="hidden" name="accomm" value="'.esc_attr($accomm_id).'"><input type="hidden" name="ci" value="'.esc_attr($ci).'"><input type="hidden" name="co" value="'.esc_attr($co).'">';
-        echo '<label>'.esc_html__('Full name','reeserva').'<input type="text" name="name" required></label>';
+        if (!rsv_is_accomm_available($accomm_id,$ci,$co)) { echo '<p class="error">'.esc_html__('Sorry, these dates are no longer available.','reeserva').'</p></div></div>'; return ob_get_clean(); }
+        echo '<form id="rsv-booking-form" method="post" class="form-grid">';
+        echo '<input type="hidden" name="accomm" value="'.esc_attr($accomm_id).'"><input type="hidden" name="ci" value="'.esc_attr($ci).'"><input type="hidden" name="co" value="'.esc_attr($co).'"><input type="hidden" name="step" value="2">';
+        echo '<label>'.esc_html__('First name','reeserva').'<input type="text" name="first_name" required></label>';
+        echo '<label>'.esc_html__('Surname','reeserva').'<input type="text" name="last_name" required></label>';
         echo '<label>'.esc_html__('Email','reeserva').'<input type="email" name="email" required></label>';
+        echo '<label>'.esc_html__('Phone','reeserva').'<input type="text" name="phone" required></label>';
         echo '<label>'.esc_html__('Notes (optional)','reeserva').'<textarea name="notes" rows="3"></textarea></label>';
-        echo '<button class="btn-primary" type="submit">'.esc_html__('Review & pay','reeserva').'</button></form></div></div>';
+        $p = rsv_get_payment_settings();
+        if ($p['stripe_enabled']){
+            echo '<button type="button" id="rsv-pay" class="btn-primary">'.esc_html__('Pay with card','reeserva').'</button>';
+            echo '<script src="https://js.stripe.com/v3/"></script>';
+            echo '<script>document.getElementById("rsv-pay").addEventListener("click", function(){var f=document.getElementById("rsv-booking-form");var fd=new FormData(f);fd.append("action","rsv_stripe_checkout");fetch("'.esc_js(admin_url('admin-ajax.php')).'",{method:"POST",body:fd,credentials:"same-origin"}).then(r=>r.json()).then(function(res){if(res&&res.success&&res.data&&res.data.url){window.location=res.data.url;}else{alert("Stripe error: "+(res&&(res.data&&res.data.message||res.message)||"unknown"));}}).catch(function(){alert("Network error");});});</script>';
+        } else {
+            echo '<button class="btn-primary" type="submit">'.esc_html__('Confirm booking','reeserva').'</button>';
+        }
+        echo '</form>';
+        echo '</div></div>';
         return ob_get_clean();
     }
 
     if ($step === 3) {
-        $name  = sanitize_text_field($_POST['name'] ?? '');
-        $email = sanitize_email($_POST['email'] ?? '');
-        $notes = sanitize_textarea_field($_POST['notes'] ?? '');
-        echo '<div class="card"><h2>'.esc_html__('Review & payment','reeserva').'</h2>';
-        echo '<div class="summary">'.esc_html(get_the_title($accomm_id)).' • '.esc_html($ci).' → '.esc_html($co).'</div>';
-        $total = rsv_quote_total($accomm_id,$ci,$co);
-        echo '<ul class="review"><li><strong>'.esc_html__('Guest','reeserva').':</strong> '.esc_html($name).'</li><li><strong>'.esc_html__('Email','reeserva').':</strong> '.esc_html($email).'</li><li><strong>'.esc_html__('Total','reeserva').':</strong> €'.esc_html(number_format($total,2)).'</li></ul>';
-
-        $p = rsv_get_payment_settings();
-        if ($p['stripe_enabled']){
-            // Stripe flow
-            echo '<button id="rsv-pay" class="btn-primary">'.esc_html__('Pay with card','reeserva').'</button>';
-            echo '<script src="https://js.stripe.com/v3/"></script>';
-            echo '<script>
-            document.getElementById("rsv-pay").addEventListener("click", function(){
-                var fd=new FormData(); fd.append("action","rsv_stripe_checkout");
-                fd.append("accomm","'.esc_js($accomm_id).'"); fd.append("ci","'.esc_js($ci).'"); fd.append("co","'.esc_js($co).'");
-                fd.append("name","'.esc_js($name).'"); fd.append("email","'.esc_js($email).'");
-                fetch("'.esc_js(admin_url('admin-ajax.php')).'", {method:"POST", body:fd, credentials:"same-origin"})
-                .then(r=>r.json()).then(function(res){
-                    if(res && res.success && res.data && res.data.url){ window.location = res.data.url; }
-                    else{ alert("Stripe error: "+(res && (res.data && res.data.message || res.message) || "unknown")); }
-                }).catch(function(){ alert("Network error"); });
-            });
-            </script>';
-            echo '<p style="margin-top:8px"><a class="btn-secondary" href="'.esc_url( add_query_arg(['step'=>2,'accomm'=>$accomm_id,'ci'=>$ci,'co'=>$co], rsv_checkout_url()) ).'">'.esc_html__('Back','reeserva').'</a></p>';
-        } else {
-            // No Stripe: confirm directly
-            if (!$name || !$email) { echo '<p class="error">'.esc_html__('Please go back and fill your details.','reeserva').'</p></div></div>'; return ob_get_clean(); }
-            $bid = wp_insert_post(['post_type'=>'rsv_booking','post_status'=>'confirmed','post_title'=>sprintf(__('Booking: %s','reeserva'), $name),'post_content'=>$notes]);
-            if (!is_wp_error($bid) && $bid) {
-                update_post_meta($bid,'rsv_booking_accomm', $accomm_id);
-                update_post_meta($bid,'rsv_check_in',      $ci);
-                update_post_meta($bid,'rsv_check_out',     $co);
-                update_post_meta($bid,'rsv_guest_name',    $name);
-                update_post_meta($bid,'rsv_guest_email',   $email);
-                update_post_meta($bid,'rsv_payment_status','confirmed');
-                do_action('rsv_booking_confirmed', $bid, ['accomm'=>$accomm_id,'ci'=>$ci,'co'=>$co,'name'=>$name,'email'=>$email,'total'=>$total]);
-                echo '<div class="confirm"><div class="badge">✔</div><h3>'.esc_html__('Booking confirmed','reeserva').'</h3>';
-                echo '<p><strong>'.esc_html__('Reference','reeserva').':</strong> '.intval($bid).'</p>';
-                echo '<a class="btn-secondary" href="'.esc_url( get_permalink($accomm_id) ).'">'.esc_html__('Back to listing','reeserva').'</a></div>';
-            } else {
-                echo '<p class="error">'.esc_html__('Could not create booking. Please try again.','reeserva').'</p>';
-            }
-        }
+        echo '<div class="card">';
+        if($success_html) echo $success_html; else echo $error_html;
         echo '</div></div>'; return ob_get_clean();
     }
     echo '</div>'; return ob_get_clean();
