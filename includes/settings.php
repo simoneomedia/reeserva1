@@ -22,6 +22,9 @@ function rsv_get_email_settings(){
 function rsv_get_payment_settings(){
     $defaults = [
         'stripe_enabled' => 0,
+        'paypal_enabled' => 0,
+        'paypal_email'   => '',
+        'arrival_enabled'=> 0,
         'currency'       => 'eur',
         'stripe_pk'      => '',
         'stripe_sk'      => '',
@@ -53,9 +56,12 @@ function rsv_render_email_settings(){
     if (isset($_POST['rsv_payment_save'])){
         check_admin_referer('rsv_payment_settings');
         $p['stripe_enabled'] = isset($_POST['stripe_enabled']) ? 1 : 0;
+        $p['paypal_enabled'] = isset($_POST['paypal_enabled']) ? 1 : 0;
+        $p['arrival_enabled']= isset($_POST['arrival_enabled']) ? 1 : 0;
         $p['currency']       = sanitize_text_field($_POST['currency'] ?? 'eur');
         $p['stripe_pk']      = sanitize_text_field($_POST['stripe_pk'] ?? '');
         $p['stripe_sk']      = sanitize_text_field($_POST['stripe_sk'] ?? '');
+        $p['paypal_email']   = sanitize_email($_POST['paypal_email'] ?? '');
         $p['test_mode']      = isset($_POST['test_mode']) ? 1 : 0;
         update_option('rsv_payment_settings',$p);
         echo '<div class="updated"><p>'.esc_html__('Payment settings saved.','reeserva').'</p></div>';
@@ -111,6 +117,13 @@ function rsv_render_email_settings(){
             <tr><th><?php esc_html_e('Secret key','reeserva');?></th><td><input type="text" name="stripe_sk" value="<?php echo esc_attr($p['stripe_sk']);?>" class="regular-text"></td></tr>
             <tr><th><?php esc_html_e('Test mode','reeserva');?></th><td><label><input type="checkbox" name="test_mode" <?php checked($p['test_mode']);?>> <?php esc_html_e('Use test keys','reeserva');?></label></td></tr>
           </tbody></table>
+          <h2><?php esc_html_e('PayPal','reeserva');?></h2>
+          <p><label><input type="checkbox" name="paypal_enabled" <?php checked($p['paypal_enabled']);?>> <?php esc_html_e('Enable PayPal payments','reeserva');?></label></p>
+          <table class="form-table"><tbody>
+            <tr><th><?php esc_html_e('PayPal email','reeserva');?></th><td><input type="email" name="paypal_email" value="<?php echo esc_attr($p['paypal_email']);?>" class="regular-text"></td></tr>
+          </tbody></table>
+          <h2><?php esc_html_e('Pay on arrival','reeserva');?></h2>
+          <p><label><input type="checkbox" name="arrival_enabled" <?php checked($p['arrival_enabled']);?>> <?php esc_html_e('Enable pay on arrival','reeserva');?></label></p>
           <p><button type="submit" name="rsv_payment_save" class="button button-primary"><?php esc_html_e('Save payment settings','reeserva');?></button></p>
           <p class="description"><?php esc_html_e('Tip: Create a Release tag (v1.x) on GitHub to ship updates.','reeserva');?></p>
         </form>

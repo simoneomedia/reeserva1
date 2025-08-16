@@ -62,6 +62,42 @@ function rsv_stripe_checkout(){
     wp_send_json_error(['message'=> 'Stripe error', 'details'=>$json]);
 }
 
+add_action('wp_ajax_nopriv_rsv_paypal_checkout','rsv_paypal_checkout');
+add_action('wp_ajax_rsv_paypal_checkout','rsv_paypal_checkout');
+function rsv_paypal_checkout(){
+    $p = rsv_get_payment_settings();
+    if (empty($p['paypal_enabled']) || empty($p['paypal_email'])) wp_send_json_error(['message'=>'PayPal disabled']);
+    $accomm_id = intval($_POST['accomm'] ?? 0);
+    $ci = sanitize_text_field($_POST['ci'] ?? '');
+    $co = sanitize_text_field($_POST['co'] ?? '');
+    $first = sanitize_text_field($_POST['first_name'] ?? '');
+    $last  = sanitize_text_field($_POST['last_name'] ?? '');
+    $email = sanitize_email($_POST['email'] ?? '');
+    $phone = sanitize_text_field($_POST['phone'] ?? '');
+    $notes = sanitize_textarea_field($_POST['notes'] ?? '');
+    if(!$accomm_id||!$ci||!$co||!$first||!$last||!$email||!$phone) wp_send_json_error(['message'=>'Missing fields']);
+
+    $total = rsv_quote_total($accomm_id,$ci,$co);
+    $base = !empty($p['test_mode']) ? 'https://www.sandbox.paypal.com/cgi-bin/webscr' : 'https://www.paypal.com/cgi-bin/webscr';
+    $return = add_query_arg([
+        'rsv_paypal'=>'return','accomm'=>$accomm_id,'ci'=>$ci,'co'=>$co,
+        'first_name'=>rawurlencode($first),'last_name'=>rawurlencode($last),
+        'email'=>rawurlencode($email),'phone'=>rawurlencode($phone),'notes'=>rawurlencode($notes)
+    ], rsv_checkout_url());
+    $cancel = add_query_arg(['step'=>2,'accomm'=>$accomm_id,'ci'=>$ci,'co'=>$co], rsv_checkout_url());
+    $query = [
+        'cmd' => '_xclick',
+        'business' => $p['paypal_email'],
+        'item_name' => sprintf('%s (%s → %s)', get_the_title($accomm_id), $ci, $co),
+        'amount' => round($total,2),
+        'currency_code' => strtoupper($p['currency']),
+        'return' => $return,
+        'cancel_return' => $cancel,
+    ];
+    $url = $base.'?'.http_build_query($query);
+    wp_send_json_success(['url'=>$url]);
+}
+
 function rsv_stripe_retrieve_session($session_id){
     $p = rsv_get_payment_settings();
     if (empty($p['stripe_sk'])) return null;
