@@ -10,15 +10,19 @@ function rsv_stripe_checkout(){
     $accomm_id = intval($_POST['accomm'] ?? 0);
     $ci = sanitize_text_field($_POST['ci'] ?? '');
     $co = sanitize_text_field($_POST['co'] ?? '');
-    $name = sanitize_text_field($_POST['name'] ?? '');
-    $email= sanitize_email($_POST['email'] ?? '');
-    if(!$accomm_id||!$ci||!$co||!$name||!$email) wp_send_json_error(['message'=>'Missing fields']);
+    $first = sanitize_text_field($_POST['first_name'] ?? '');
+    $last  = sanitize_text_field($_POST['last_name'] ?? '');
+    $email = sanitize_email($_POST['email'] ?? '');
+    $phone = sanitize_text_field($_POST['phone'] ?? '');
+    $notes = sanitize_textarea_field($_POST['notes'] ?? '');
+    $name = trim($first.' '.$last);
+    if(!$accomm_id||!$ci||!$co||!$first||!$last||!$email||!$phone) wp_send_json_error(['message'=>'Missing fields']);
 
     $total = rsv_quote_total($accomm_id,$ci,$co);
     $amount = max(0, round($total*100)); // cents
     if ($amount < 50) $amount = 50;
 
-    $success = add_query_arg(['rsv_stripe'=>'return','session_id'=>'{CHECKOUT_SESSION_ID}','accomm'=>$accomm_id,'ci'=>$ci,'co'=>$co,'name'=>rawurlencode($name),'email'=>rawurlencode($email)], rsv_checkout_url());
+    $success = add_query_arg(['rsv_stripe'=>'return','session_id'=>'{CHECKOUT_SESSION_ID}','accomm'=>$accomm_id,'ci'=>$ci,'co'=>$co,'first_name'=>rawurlencode($first),'last_name'=>rawurlencode($last),'email'=>rawurlencode($email),'phone'=>rawurlencode($phone),'notes'=>rawurlencode($notes)], rsv_checkout_url());
     $cancel  = add_query_arg(['step'=>2,'accomm'=>$accomm_id,'ci'=>$ci,'co'=>$co], rsv_checkout_url());
 
     $body = [
@@ -37,7 +41,9 @@ function rsv_stripe_checkout(){
             ],
         ]],
         'metadata' => [
-            'accomm_id'=>$accomm_id,'ci'=>$ci,'co'=>$co,'guest_name'=>$name,'guest_email'=>$email,
+            'accomm_id'=>$accomm_id,'ci'=>$ci,'co'=>$co,
+            'guest_first'=>$first,'guest_last'=>$last,
+            'guest_email'=>$email,'guest_phone'=>$phone,
         ]
     ];
     $headers = [
