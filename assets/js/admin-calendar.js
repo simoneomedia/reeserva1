@@ -49,17 +49,17 @@
       });
     });
   }
-  function fetchPrices(){
-    return {
-      url: ajax,
-      method: 'GET',
-      extraParams: ()=>({ action:'rsv_load_prices', nonce: nonceLoad, type_id: currentType })
-    };
+  function fetchPrices(info, success){
+    const p = new URLSearchParams({ action:'rsv_load_prices', nonce: nonceLoad, type_id: currentType });
+    fetch(ajax+'?'+p, {credentials:'same-origin'}).then(r=>r.json()).then(json=>{
+      const data = json.data || [];
+      success(data);
+    });
   }
 
   const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
     initialView:'dayGridMonth', height:'auto', selectable:true, dayMaxEvents:true, eventDisplay:'block',
-    eventSources: [{ events: fetchBooked }, fetchPrices() ],
+    eventSources: [{ events: fetchBooked }, { events: fetchPrices }],
     eventDidMount(info){
       if(info.event.extendedProps && info.event.extendedProps.isPrice) info.el.classList.add('price-event');
       if(info.event.classNames && info.event.classNames.indexOf('rsv-booking')>-1){
