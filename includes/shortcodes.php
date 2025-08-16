@@ -3,11 +3,13 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 add_shortcode('rsv_search', function(){
+    wp_enqueue_style('rsv-search', RSV_URL.'assets/css/search.css', [], RSV_VER);
+    wp_enqueue_script('rsv-search', RSV_URL.'assets/js/search.js', [], RSV_VER, true);
     $ci = sanitize_text_field($_GET['ci'] ?? '');
     $co = sanitize_text_field($_GET['co'] ?? '');
     $guests = intval($_GET['guests'] ?? 0);
     ob_start(); ?>
-    <form class="ehb-search-form" method="get" style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
+    <form class="ehb-search-form" method="get">
       <label><?php esc_html_e('Guests','reeserva'); ?> <input type="number" name="guests" value="<?php echo esc_attr($guests); ?>" min="1" required></label>
       <label><?php esc_html_e('Check-in','reeserva'); ?> <input type="date" name="ci" value="<?php echo esc_attr($ci); ?>" required></label>
       <label><?php esc_html_e('Check-out','reeserva'); ?> <input type="date" name="co" value="<?php echo esc_attr($co); ?>" required></label>

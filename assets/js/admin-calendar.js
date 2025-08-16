@@ -154,7 +154,6 @@
         nights: parseInt(r.querySelector('.tier-nights').value,10)||1,
         price:  parseFloat(r.querySelector('.tier-price').value)||0
       }));
-      if(!tiers.length){ alert('Add at least one nights tier'); return; }
       const periods = tiers.map(t=>t.nights);
       const base_prices = tiers.map(t=>t.price);
       const variations = Array.from(varsCt.querySelectorAll('.var-card')).map(card=>{

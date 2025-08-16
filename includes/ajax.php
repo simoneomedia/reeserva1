@@ -39,11 +39,11 @@ function rsv_load_prices(){
         if(!is_array($sps)) continue;
         foreach($sps as $e){
             $sid = intval($e['season'] ?? 0); if(!$sid) continue;
+            if(!empty($e['blocked']) || empty($e['price']) || empty($e['price']['prices'])) continue;
             $sd = get_post_meta($sid,'rsv_start_date',true);
             $ed = get_post_meta($sid,'rsv_end_date',true);
             if(!$sd||!$ed) continue;
             $price = floatval( ($e['price']['prices'][0] ?? 0) );
-            $has_vars = !empty($e['price']['enable_variations']);
             $events[] = [
                 'title' => '€'.number_format($price,0),
                 'start' => $sd,
@@ -86,6 +86,13 @@ function rsv_day_prices(){
         $bp = floatval(get_post_meta($rates[0]->ID,'rsv_base_price',true) ?: 0);
         wp_send_json(['status'=>'single','periods'=>[1],'prices'=>[$bp],'variations'=>[]]);
     }
+    $blocked=false;
+    foreach($found as $e){
+        if(!empty($e['blocked']) || empty($e['price']) || empty($e['price']['prices'])){ $blocked=true; break; }
+    }
+    if($blocked){
+        wp_send_json(['status'=>'single','periods'=>[],'prices'=>[],'variations'=>[]]);
+    }
     // Simplify: if multiple matches but identical, return single
     $periods = []; $prices=[]; $variations=[];
     foreach($found as $e){
@@ -112,9 +119,10 @@ function rsv_update_price(){
     $periods    = json_decode(stripslashes($_POST['periods'] ?? '[]'), true);
     $base_prices= json_decode(stripslashes($_POST['base_prices'] ?? '[]'), true);
     $vars       = json_decode(stripslashes($_POST['variations'] ?? '[]'), true);
-    if(!$type_id||!$start_date||!$end_date||empty($periods)||empty($base_prices)){
+    if(!$type_id||!$start_date||!$end_date){
         wp_send_json_error(['message'=>'Missing fields']);
     }
+    $blocked = empty($periods) || empty($base_prices);
 
     $season_ids = [];
     $period = new DatePeriod(new DateTime($start_date), new DateInterval('P1D'), (new DateTime($end_date))->modify('+1 day'));
@@ -131,7 +139,7 @@ function rsv_update_price(){
         $season_ids[]=$sid;
         $seasonal[$sid] = [
             'season'=>(string)$sid,
-            'price'=>[
+            'price'=> $blocked ? [] : [
                 'periods'=>array_map('intval',$periods),
                 'prices'=>array_map('floatval',$base_prices),
                 'enable_variations'=> !empty($vars),
@@ -139,6 +147,7 @@ function rsv_update_price(){
                     return ['adults'=>intval($v['adults'] ?? 1),'children'=>intval($v['children'] ?? 0),'prices'=>array_map('floatval', (array)($v['prices'] ?? []))];
                 }, $vars),
             ],
+            'blocked' => $blocked,
         ];
     }
 
@@ -174,9 +183,11 @@ function rsv_update_price(){
     foreach($seasonal as $sid=>$ent){ $indexed[$sid] = $ent; }
     update_post_meta($rid,'rsv_season_prices', array_values($indexed));
     update_post_meta($rid,'rsv_season_ids', $season_ids);
-    update_post_meta($rid,'rsv_base_price', floatval($base_prices[0] ?? 0));
+    if(!$blocked && !empty($base_prices)){
+        update_post_meta($rid,'rsv_base_price', floatval($base_prices[0] ?? 0));
+    }
 
-    $events = array_map(function($sid) use($base_prices){
+    $events = $blocked ? [] : array_map(function($sid) use($base_prices){
         $d = get_post_meta($sid,'rsv_start_date',true);
         return ['title'=>'€'.number_format(floatval($base_prices[0] ?? 0),0),'start'=>$d,'allDay'=>true,'backgroundColor'=>'transparent','borderColor'=>'transparent','textColor'=>'#000','isPrice'=>true];
     }, $season_ids);
