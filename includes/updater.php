@@ -100,7 +100,7 @@ class Reeserva_GitHub_Updater {
     }
     public function fix_subdir_name($source,$remote_source,$upgrader,$hook_extra){
         if(empty($hook_extra['plugin']) || $hook_extra['plugin']!==$this->slug) return $source;
-        $proper=trailingslashit(WP_PLUGIN_DIR).dirname($this->slug).'/';
+        $proper=trailingslashit($remote_source).dirname($this->slug).'/';
         if(trailingslashit($source)===trailingslashit($proper)) return $source;
         $paths=glob(trailingslashit($remote_source).'*', GLOB_ONLYDIR);
         if(!$paths) return $source;
