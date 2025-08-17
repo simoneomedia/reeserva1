@@ -24,6 +24,15 @@ add_shortcode('rsv_new_accommodation', function(){
     $checkin    = sanitize_text_field($_POST['checkin'] ?? '');
     $checkout   = sanitize_text_field($_POST['checkout'] ?? '');
     $amenities  = array_map('sanitize_text_field', (array) ($_POST['amenities'] ?? []));
+    $rules      = wp_kses_post($_POST['rules'] ?? '');
+    $room_count = intval($_POST['room_count'] ?? 0);
+    $rooms      = [];
+    if(isset($_POST['rooms'])){
+        foreach((array)$_POST['rooms'] as $r){
+            $beds = array_map('sanitize_text_field', (array)($r['beds'] ?? []));
+            $rooms[]=['beds'=>$beds];
+        }
+    }
 
     $success_html = '';
     $error_html   = '';
@@ -72,6 +81,9 @@ add_shortcode('rsv_new_accommodation', function(){
                 update_post_meta($post_id,'rsv_checkout',$checkout);
                 update_post_meta($post_id,'rsv_amenities',$amenities);
                 update_post_meta($post_id,'rsv_gallery',$gallery);
+                update_post_meta($post_id,'rsv_house_rules',$rules);
+                update_post_meta($post_id,'rsv_room_count',$room_count);
+                update_post_meta($post_id,'rsv_rooms',$rooms);
                 $success_html = '<div class="confirm"><div class="badge">✔</div><h3>'.esc_html__('Accommodation created','reeserva').'</h3><p><a class="btn-secondary" href="'.esc_url(get_permalink($post_id)).'">'.esc_html__('View listing','reeserva').'</a></p></div>';
             } else {
                 $error_html = '<p class="error">'.esc_html__('Could not create accommodation.','reeserva').'</p>';
@@ -119,6 +131,38 @@ add_shortcode('rsv_new_accommodation', function(){
             echo '<label style="margin-right:12px"><input type="checkbox" name="amenities[]" value="'.esc_attr($k).'" '.(in_array($k,$amenities) ? 'checked' : '').'> '.esc_html($label).'</label>';
         }
         echo '</div>';
+        ?>
+        <label style="grid-column:1/-1"><?php esc_html_e('House rules','reeserva');?><textarea name="rules" rows="4"><?php echo esc_textarea($rules);?></textarea></label>
+        <label><?php esc_html_e('Number of rooms','reeserva');?> <input type="number" id="rsv-fe-room-count" name="room_count" value="<?php echo esc_attr($room_count);?>" min="0"></label>
+        <div id="rsv-fe-rooms-wrapper" style="grid-column:1/-1">
+        <?php for($i=0;$i<$room_count;$i++): $beds=(array)($rooms[$i]['beds'] ?? []); ?>
+          <div class="fe-room" data-index="<?php echo $i;?>">
+            <h4><?php printf(esc_html__('Room %d','reeserva'),$i+1);?></h4>
+            <div class="fe-beds">
+              <?php foreach($beds as $bed): ?>
+              <div class="fe-bed-row"><select name="rooms[<?php echo $i;?>][beds][]">
+                <?php foreach(rsv_default_bed_types() as $bk=>$bl): ?>
+                  <option value="<?php echo esc_attr($bk);?>" <?php selected($bed,$bk);?>><?php echo esc_html($bl);?></option>
+                <?php endforeach; ?>
+              </select></div>
+              <?php endforeach; ?>
+            </div>
+            <button type="button" class="btn-secondary fe-add-bed"><?php esc_html_e('Add bed','reeserva');?></button>
+          </div>
+        <?php endfor; ?>
+        </div>
+        <script>
+        document.addEventListener('DOMContentLoaded',function(){
+          var c=document.getElementById('rsv-fe-room-count');
+          var w=document.getElementById('rsv-fe-rooms-wrapper');
+          var o=`<?php foreach(rsv_default_bed_types() as $bk=>$bl){echo '<option value="'.esc_attr($bk).'">'.esc_html($bl).'</option>'; }?>`;
+          function addBed(r){var i=r.dataset.index,b=r.querySelector('.fe-beds'),d=document.createElement('div');d.className='fe-bed-row';d.innerHTML='<select name="rooms['+i+'][beds][]">'+o+'</select>';b.appendChild(d);} 
+          function bind(r){r.querySelector('.fe-add-bed').addEventListener('click',function(){addBed(r);});}
+          function render(){var n=parseInt(c.value)||0,u=w.children.length;for(var i=u;i<n;i++){var r=document.createElement('div');r.className='fe-room';r.dataset.index=i;r.innerHTML='<h4><?php echo esc_js(esc_html__('Room','reeserva'));?> '+(i+1)+'</h4><div class="fe-beds"></div><button type="button" class="btn-secondary fe-add-bed"><?php echo esc_js(esc_html__('Add bed','reeserva'));?></button>';w.appendChild(r);bind(r);}while(w.children.length>n){w.removeChild(w.lastElementChild);} }
+          w.querySelectorAll('.fe-room').forEach(bind);c.addEventListener('change',render);
+        });
+        </script>
+        <?php
         echo '<button class="btn-primary" type="submit">'.esc_html__('Continue','reeserva').'</button>';
         echo '</form>';
     } else { // Step 3
@@ -132,6 +176,13 @@ add_shortcode('rsv_new_accommodation', function(){
         echo '<input type="hidden" name="checkout" value="'.esc_attr($checkout).'">';
         foreach ($amenities as $a) {
             echo '<input type="hidden" name="amenities[]" value="'.esc_attr($a).'">';
+        }
+        echo '<input type="hidden" name="rules" value="'.esc_attr($rules).'">';
+        echo '<input type="hidden" name="room_count" value="'.esc_attr($room_count).'">';
+        for($i=0;$i<$room_count;$i++){
+            foreach(($rooms[$i]['beds'] ?? []) as $bed){
+                echo '<input type="hidden" name="rooms['.$i.'][beds][]" value="'.esc_attr($bed).'">';
+            }
         }
         echo '<label style="grid-column:1/-1">'.esc_html__('Images','reeserva').'<input type="file" id="rsv-gallery-input" name="gallery_files[]" accept="image/*" multiple></label>';
         echo '<div id="rsv-gallery-preview" class="gallery-preview" style="grid-column:1/-1"></div>';

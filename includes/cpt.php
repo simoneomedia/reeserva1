@@ -43,6 +43,10 @@ function rsv_render_accomm_meta($post){
     $amenities = (array) get_post_meta($post->ID,'rsv_amenities',true) ?: [];
     $checkin = esc_attr( get_post_meta($post->ID,'rsv_checkin',true) );
     $checkout= esc_attr( get_post_meta($post->ID,'rsv_checkout',true) );
+    $rules = wp_kses_post( get_post_meta($post->ID,'rsv_house_rules',true) );
+    $rooms = (array) get_post_meta($post->ID,'rsv_rooms',true) ?: [];
+    $room_count = (int) get_post_meta($post->ID,'rsv_room_count',true);
+    if($room_count < count($rooms)) $room_count = count($rooms);
     ?>
     <style>.ehb-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.ehb-card{background:#fff;border:1px solid #e3e3e3;border-radius:10px;padding:16px}</style>
     <div class="ehb-grid">
@@ -64,12 +68,70 @@ function rsv_render_accomm_meta($post){
         <textarea name="rsv_gallery" rows="4" style="width:100%"><?php echo esc_textarea(implode("\n",$gallery));?></textarea>
       </div>
       <div class="ehb-card">
+        <h3><?php esc_html_e('House rules','reeserva');?></h3>
+        <textarea name="rsv_house_rules" rows="4" style="width:100%"><?php echo esc_textarea($rules);?></textarea>
+      </div>
+      <div class="ehb-card">
+        <h3><?php esc_html_e('Rooms & Beds','reeserva');?></h3>
+        <p><label><?php esc_html_e('Number of rooms','reeserva');?> <input type="number" name="rsv_room_count" id="rsv-room-count" value="<?php echo esc_attr($room_count);?>" min="0"></label></p>
+        <div id="rsv-rooms-wrapper">
+          <?php for($i=0;$i<$room_count;$i++): $beds=(array)($rooms[$i]['beds'] ?? []); ?>
+          <div class="rsv-room" data-index="<?php echo $i;?>">
+            <h4><?php printf(esc_html__('Room %d','reeserva'), $i+1);?></h4>
+            <div class="rsv-beds">
+              <?php foreach($beds as $bed): ?>
+              <div class="rsv-bed-row"><select name="rsv_rooms[<?php echo $i;?>][beds][]">
+                <?php foreach(rsv_default_bed_types() as $k=>$label): ?>
+                  <option value="<?php echo esc_attr($k);?>" <?php selected($bed,$k);?>><?php echo esc_html($label);?></option>
+                <?php endforeach; ?>
+              </select></div>
+              <?php endforeach; ?>
+            </div>
+            <button type="button" class="button add-bed"><?php esc_html_e('Add bed','reeserva');?></button>
+          </div>
+          <?php endfor; ?>
+        </div>
+      </div>
+      <div class="ehb-card">
         <h3><?php esc_html_e('iCal Sync','reeserva');?></h3>
           <p class="desc"><?php esc_html_e('Paste external calendar URLs (one per line).','reeserva');?></p>
           <textarea name="rsv_ical_sources" rows="3" placeholder="https://calendar.airbnb.com/ical/....ics"><?php echo esc_textarea( implode("\n",(array) get_post_meta($post->ID,'rsv_ical_sources',true) ?: [] ) ); ?></textarea>
           <p class="desc"><?php printf( esc_html__('Export feed URL: %s','reeserva'), esc_url( add_query_arg(['rsv_ics'=>$post->ID,'key'=>get_option('rsv_ics_key') ?: 'set-after-save'], home_url('/') ) ) ); ?></p>
       </div>
     </div>
+    <script>
+    document.addEventListener('DOMContentLoaded',function(){
+      var roomCount=document.getElementById('rsv-room-count');
+      var wrapper=document.getElementById('rsv-rooms-wrapper');
+      var bedOptions=`<?php foreach(rsv_default_bed_types() as $k=>$label){echo '<option value="'.esc_attr($k).'">'.esc_html($label).'</option>'; }?>`;
+      function addBed(roomEl){
+        var idx=roomEl.dataset.index;
+        var beds=roomEl.querySelector('.rsv-beds');
+        var div=document.createElement('div');
+        div.className='rsv-bed-row';
+        div.innerHTML='<select name="rsv_rooms['+idx+'][beds][]">'+bedOptions+'</select>';
+        beds.appendChild(div);
+      }
+      function bind(roomEl){
+        roomEl.querySelector('.add-bed').addEventListener('click',function(){addBed(roomEl);});
+      }
+      function renderRooms(){
+        var count=parseInt(roomCount.value)||0;
+        var current=wrapper.children.length;
+        for(var i=current;i<count;i++){
+          var room=document.createElement('div');
+          room.className='rsv-room';
+          room.dataset.index=i;
+          room.innerHTML='<h4><?php echo esc_js(esc_html__('Room','reeserva'));?> '+(i+1)+'</h4><div class="rsv-beds"></div><button type="button" class="button add-bed"><?php echo esc_js(esc_html__('Add bed','reeserva'));?></button>';
+          wrapper.appendChild(room);
+          bind(room);
+        }
+        while(wrapper.children.length>count){wrapper.removeChild(wrapper.lastElementChild);}    
+      }
+      wrapper.querySelectorAll('.rsv-room').forEach(bind);
+      roomCount.addEventListener('change',renderRooms);
+    });
+    </script>
     <?php
 }
 add_action('save_post_rsv_accomm', function($post_id){
@@ -79,6 +141,18 @@ add_action('save_post_rsv_accomm', function($post_id){
     update_post_meta($post_id,'rsv_checkout', sanitize_text_field($_POST['rsv_checkout'] ?? ''));
     $amen = array_map('sanitize_text_field', (array) ($_POST['rsv_amenities'] ?? []));
     update_post_meta($post_id,'rsv_amenities',$amen);
+    update_post_meta($post_id,'rsv_house_rules', wp_kses_post($_POST['rsv_house_rules'] ?? ''));
+    update_post_meta($post_id,'rsv_room_count', intval($_POST['rsv_room_count'] ?? 0));
+    if(isset($_POST['rsv_rooms'])){
+        $rooms=[];
+        foreach((array)$_POST['rsv_rooms'] as $r){
+            $beds = array_map('sanitize_text_field', (array)($r['beds'] ?? []));
+            $rooms[]=['beds'=>$beds];
+        }
+        update_post_meta($post_id,'rsv_rooms',$rooms);
+    } else {
+        delete_post_meta($post_id,'rsv_rooms');
+    }
     if(isset($_POST['rsv_gallery'])){
         $lines = array_filter(array_map('trim', explode("\n", wp_kses_post($_POST['rsv_gallery']) )));
         update_post_meta($post_id,'rsv_gallery',$lines);

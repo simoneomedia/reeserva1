@@ -18,6 +18,17 @@ function rsv_default_amenities(){
         'first_aid'   => __('First aid kit','reeserva'),
     ];
 }
+
+function rsv_default_bed_types(){
+    return [
+        'single' => __('Single bed','reeserva'),
+        'double' => __('Double bed','reeserva'),
+        'queen'  => __('Queen bed','reeserva'),
+        'king'   => __('King bed','reeserva'),
+        'sofa'   => __('Sofa bed','reeserva'),
+        'bunk'   => __('Bunk bed','reeserva'),
+    ];
+}
 function rsv_get_meta($post_id, $key, $default = null){
     $v = get_post_meta($post_id, $key, true);
     return ($v === '' || $v === null) ? $default : $v;
