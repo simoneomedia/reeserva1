@@ -15,6 +15,7 @@ add_shortcode('rsv_new_accommodation', function(){
     }
 
     wp_enqueue_style('rsv-checkout', RSV_URL.'assets/css/checkout.css', [], RSV_VER);
+    wp_enqueue_script('rsv-frontend-admin', RSV_URL.'assets/js/frontend-admin.js', [], RSV_VER, true);
 
     $step       = max(1, intval($_POST['step'] ?? 1));
     $title      = sanitize_text_field($_POST['title'] ?? '');
@@ -23,10 +24,6 @@ add_shortcode('rsv_new_accommodation', function(){
     $checkin    = sanitize_text_field($_POST['checkin'] ?? '');
     $checkout   = sanitize_text_field($_POST['checkout'] ?? '');
     $amenities  = array_map('sanitize_text_field', (array) ($_POST['amenities'] ?? []));
-    $gallery    = [];
-    if (isset($_POST['gallery'])) {
-        $gallery = array_filter(array_map('esc_url_raw', explode("\n", $_POST['gallery'])));
-    }
 
     $success_html = '';
     $error_html   = '';
@@ -36,6 +33,33 @@ add_shortcode('rsv_new_accommodation', function(){
             $error_html = '<p class="error">'.esc_html__('Title is required','reeserva').'</p>';
             $step = 3; // show gallery step again
         } else {
+            $gallery = [];
+            if ( ! empty( $_FILES['gallery_files']['name'][0] ) ) {
+                require_once ABSPATH.'wp-admin/includes/file.php';
+                require_once ABSPATH.'wp-admin/includes/image.php';
+                require_once ABSPATH.'wp-admin/includes/media.php';
+                $files = $_FILES['gallery_files'];
+                foreach ( $files['name'] as $i => $name ) {
+                    if ( $files['error'][$i] === UPLOAD_ERR_OK ) {
+                        $file_array = [
+                            'name'     => $name,
+                            'type'     => $files['type'][$i],
+                            'tmp_name' => $files['tmp_name'][$i],
+                            'error'    => $files['error'][$i],
+                            'size'     => $files['size'][$i],
+                        ];
+                        $attachment_id = media_handle_sideload( $file_array, 0 );
+                        if ( ! is_wp_error( $attachment_id ) ) {
+                            $url = wp_get_attachment_url( $attachment_id );
+                            if ( $url ) {
+                                $gallery[] = $url;
+                            }
+                        }
+                    }
+                }
+            } elseif (isset($_POST['gallery'])) {
+                $gallery = array_filter(array_map('esc_url_raw', explode("\n", $_POST['gallery'])));
+            }
             $post_id = wp_insert_post([
                 'post_type'   => 'rsv_accomm',
                 'post_status' => 'publish',
@@ -99,7 +123,7 @@ add_shortcode('rsv_new_accommodation', function(){
         echo '</form>';
     } else { // Step 3
         echo '<h2>'.esc_html__('Gallery','reeserva').'</h2>';
-        echo '<form method="post" class="form-grid">';
+        echo '<form method="post" class="form-grid" enctype="multipart/form-data">';
         echo '<input type="hidden" name="step" value="4">';
         echo '<input type="hidden" name="title" value="'.esc_attr($title).'">';
         echo '<textarea style="display:none" name="content">'.esc_textarea($content).'</textarea>';
@@ -109,7 +133,8 @@ add_shortcode('rsv_new_accommodation', function(){
         foreach ($amenities as $a) {
             echo '<input type="hidden" name="amenities[]" value="'.esc_attr($a).'">';
         }
-        echo '<label style="grid-column:1/-1">'.esc_html__('Image URLs (one per line)','reeserva').'<textarea name="gallery" rows="4">'.esc_textarea(implode("\n", $gallery)).'</textarea></label>';
+        echo '<label style="grid-column:1/-1">'.esc_html__('Images','reeserva').'<input type="file" id="rsv-gallery-input" name="gallery_files[]" accept="image/*" multiple></label>';
+        echo '<div id="rsv-gallery-preview" class="gallery-preview" style="grid-column:1/-1"></div>';
         echo '<button class="btn-primary" type="submit">'.esc_html__('Create','reeserva').'</button>';
         echo '</form>';
     }

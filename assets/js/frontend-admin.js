@@ -14,4 +14,21 @@ document.addEventListener('DOMContentLoaded',function(){
       if(sidebar.classList.contains('open')) sidebar.classList.remove('open');
     });
   });
+  var galleryInput=document.getElementById('rsv-gallery-input');
+  var preview=document.getElementById('rsv-gallery-preview');
+  if(galleryInput&&preview){
+    galleryInput.addEventListener('change',function(){
+      preview.innerHTML='';
+      Array.prototype.forEach.call(galleryInput.files,function(file){
+        if(!file.type.match('image')) return;
+        var reader=new FileReader();
+        reader.onload=function(e){
+          var img=document.createElement('img');
+          img.src=e.target.result;
+          preview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+  }
 });
