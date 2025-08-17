@@ -1,0 +1,58 @@
+.rsv-admin-dashboard{
+  display:flex;
+  min-height:80vh;
+  font-family:"Helvetica Neue",Arial,sans-serif;
+}
+.rsv-admin-menu-toggle{
+  display:none;
+  position:fixed;
+  top:15px;
+  left:15px;
+  background:#fff;
+  border:1px solid #ddd;
+  border-radius:4px;
+  padding:8px 10px;
+  z-index:1001;
+}
+.rsv-admin-sidebar{
+  width:220px;
+  background:#fff;
+  border-right:1px solid #eee;
+  padding:20px;
+}
+.rsv-admin-sidebar h2{
+  margin-top:0;
+  font-size:1.2rem;
+  color:#FF5A5F;
+}
+.rsv-admin-sidebar nav a{
+  display:block;
+  padding:8px 0;
+  color:#333;
+  text-decoration:none;
+  border-bottom:1px solid #f0f0f0;
+}
+.rsv-admin-sidebar nav a.active{
+  color:#FF5A5F;
+  font-weight:600;
+}
+.rsv-admin-main{
+  flex:1;
+  padding:20px;
+  background:#fafafa;
+}
+@media(max-width:782px){
+  .rsv-admin-dashboard{flex-direction:column;}
+  .rsv-admin-menu-toggle{display:block;}
+  .rsv-admin-sidebar{
+    position:fixed;
+    left:-260px;
+    top:0;
+    height:100%;
+    width:240px;
+    transition:left .3s;
+    z-index:1000;
+  }
+  .rsv-admin-sidebar.open{left:0;box-shadow:2px 0 8px rgba(0,0,0,.15);}
+  .rsv-admin-main{padding:15px;}
+}
