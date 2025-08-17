@@ -2,18 +2,23 @@
   display:flex;
   min-height:80vh;
   font-family:"Helvetica Neue",Arial,sans-serif;
+  --accent:#ff5a5f;
 }
 .rsv-admin-menu-toggle{
   display:none;
   position:fixed;
   top:15px;
   left:15px;
-  background:#fff;
-  border:1px solid #ddd;
-  border-radius:4px;
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  border-radius:6px;
   padding:8px 10px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.15);
   z-index:1001;
+  transition:background .2s;
 }
+.rsv-admin-menu-toggle:hover{background:#e04852;}
 .rsv-admin-sidebar{
   width:220px;
   background:#fff;
@@ -23,23 +28,44 @@
 .rsv-admin-sidebar h2{
   margin-top:0;
   font-size:1.2rem;
-  color:#FF5A5F;
+  color:var(--accent);
 }
 .rsv-admin-sidebar nav a{
   display:block;
-  padding:8px 0;
+  padding:8px 12px;
   color:#333;
   text-decoration:none;
-  border-bottom:1px solid #f0f0f0;
+  border-radius:8px;
+  margin-bottom:4px;
+  transition:background .2s,color .2s;
 }
+.rsv-admin-sidebar nav a:hover{background:#f5f5f5;}
 .rsv-admin-sidebar nav a.active{
-  color:#FF5A5F;
+  background:var(--accent);
+  color:#fff;
   font-weight:600;
 }
 .rsv-admin-main{
   flex:1;
   padding:20px;
   background:#fafafa;
+}
+.rsv-admin-main button,
+.rsv-admin-main .button{
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  padding:8px 16px;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:600;
+  box-shadow:0 2px 4px rgba(0,0,0,0.1);
+  transition:background .2s, box-shadow .2s;
+}
+.rsv-admin-main button:hover,
+.rsv-admin-main .button:hover{
+  background:#e04852;
+  box-shadow:0 4px 8px rgba(0,0,0,0.15);
 }
 @media(max-width:782px){
   .rsv-admin-dashboard{flex-direction:column;}
