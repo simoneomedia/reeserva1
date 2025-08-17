@@ -2,6 +2,35 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
+function rsv_booking_confirmation_html($bid){
+    $accomm_id = (int) get_post_meta($bid,'rsv_booking_accomm',true);
+    $ci = get_post_meta($bid,'rsv_check_in',true);
+    $co = get_post_meta($bid,'rsv_check_out',true);
+    $first = get_post_meta($bid,'rsv_guest_name',true);
+    $last  = get_post_meta($bid,'rsv_guest_surname',true);
+    $email = get_post_meta($bid,'rsv_guest_email',true);
+    $phone = get_post_meta($bid,'rsv_guest_phone',true);
+    $settings = rsv_get_email_settings();
+    $text = $settings['confirmation_text'] ?? '';
+    ob_start();
+    echo '<div class="confirm"><div class="badge">✔</div><h3>'.esc_html__('Booking confirmed','reeserva').'</h3>';
+    if($text) echo '<p>'.wp_kses_post($text).'</p>';
+    if($accomm_id){
+        $thumb = get_the_post_thumbnail($accomm_id,'medium',['style'=>'width:100%;max-width:300px;height:auto;border-radius:4px;margin-bottom:10px']);
+        if($thumb) echo $thumb;
+        echo '<p><strong>'.esc_html__('Accommodation','reeserva').':</strong> '.esc_html(get_the_title($accomm_id)).'</p>';
+    }
+    if($ci && $co) echo '<p><strong>'.esc_html__('Dates','reeserva').':</strong> '.esc_html($ci).' → '.esc_html($co).'</p>';
+    $full = trim($first.' '.$last);
+    if($full) echo '<p><strong>'.esc_html__('Guest','reeserva').':</strong> '.esc_html($full).'</p>';
+    if($email) echo '<p><strong>'.esc_html__('Email','reeserva').':</strong> '.esc_html($email).'</p>';
+    if($phone) echo '<p><strong>'.esc_html__('Phone','reeserva').':</strong> '.esc_html($phone).'</p>';
+    echo '<p><strong>'.esc_html__('Reference','reeserva').':</strong> '.intval($bid).'</p>';
+    if($accomm_id) echo '<a class="btn-secondary" href="'.esc_url(get_permalink($accomm_id)).'">'.esc_html__('Back to listing','reeserva').'</a>';
+    echo '</div>';
+    return ob_get_clean();
+}
+
 add_shortcode('rsv_search', function(){
     wp_enqueue_style('rsv-search', RSV_URL.'assets/css/search.css', [], RSV_VER);
     wp_enqueue_script('rsv-search', RSV_URL.'assets/js/search.js', [], RSV_VER, true);
@@ -78,17 +107,13 @@ add_shortcode('rsv_checkout', function(){
                     update_post_meta($bid,'rsv_payment_method','stripe');
                     update_post_meta($bid,'rsv_stripe_intent',sanitize_text_field($_GET['pi']));
                     do_action('rsv_booking_confirmed', $bid, ['accomm'=>$accomm_id,'ci'=>$ci,'co'=>$co,'first_name'=>$first,'last_name'=>$last,'email'=>$email,'phone'=>$phone]);
-                    echo '<div class="confirm"><div class="badge">✔</div><h3>'.esc_html__('Booking confirmed','reeserva').'</h3>';
-                    echo '<p><strong>'.esc_html__('Reference','reeserva').':</strong> '.intval($bid).'</p>';
-                    echo '<a class="btn-secondary" href="'.esc_url( get_permalink($accomm_id) ).'">'.esc_html__('Back to listing','reeserva').'</a></div>';
+                    echo rsv_booking_confirmation_html($bid);
                 } else {
                     echo '<p class="error">'.esc_html__('Could not create booking, but payment succeeded. Please contact support.','reeserva').'</p>';
                 }
             } else {
                 $b=$exists[0];
-                echo '<div class="confirm"><div class="badge">✔</div><h3>'.esc_html__('Booking confirmed','reeserva').'</h3>';
-                echo '<p><strong>'.esc_html__('Reference','reeserva').':</strong> '.intval($b->ID).'</p>';
-                echo '<a class="btn-secondary" href="'.esc_url( get_permalink($accomm_id) ).'">'.esc_html__('Back to listing','reeserva').'</a></div>';
+                echo rsv_booking_confirmation_html($b->ID);
             }
         } else {
             echo '<p class="error">'.esc_html__('Payment not verified. If you were charged, contact support.','reeserva').'</p>';
@@ -124,7 +149,7 @@ add_shortcode('rsv_checkout', function(){
                     update_post_meta($bid,'rsv_payment_method','paypal');
                     if(!empty($_GET['tx'])) update_post_meta($bid,'rsv_paypal_txn', sanitize_text_field($_GET['tx']));
                     do_action('rsv_booking_confirmed',$bid,['accomm'=>$accomm_id,'ci'=>$ci,'co'=>$co,'first_name'=>$first,'last_name'=>$last,'email'=>$email,'phone'=>$phone]);
-                    echo '<div class="confirm"><div class="badge">✔</div><h3>'.esc_html__('Booking confirmed','reeserva').'</h3><p><strong>'.esc_html__('Reference','reeserva').':</strong> '.intval($bid).'</p><a class="btn-secondary" href="'.esc_url(get_permalink($accomm_id)).'">'.esc_html__('Back to listing','reeserva').'</a></div>';
+                    echo rsv_booking_confirmation_html($bid);
                 } else {
                     echo '<p class="error">'.esc_html__('Could not create booking.','reeserva').'</p>';
                 }
@@ -165,7 +190,7 @@ add_shortcode('rsv_checkout', function(){
                 update_post_meta($bid,'rsv_payment_status',$method==='arrival'?'pending':'confirmed');
                 update_post_meta($bid,'rsv_payment_method',$method);
                 do_action('rsv_booking_confirmed',$bid,['accomm'=>$accomm_id,'ci'=>$ci,'co'=>$co,'first_name'=>$first,'last_name'=>$last,'email'=>$email,'phone'=>$phone,'total'=>$total]);
-                $success_html = '<div class="confirm"><div class="badge">✔</div><h3>'.esc_html__('Booking confirmed','reeserva').'</h3><p><strong>'.esc_html__('Reference','reeserva').':</strong> '.intval($bid).'</p><a class="btn-secondary" href="'.esc_url(get_permalink($accomm_id)).'">'.esc_html__('Back to listing','reeserva').'</a></div>';
+                $success_html = rsv_booking_confirmation_html($bid);
             } else {
                 $error_html = '<p class="error">'.esc_html__('Could not create booking. Please try again.','reeserva').'</p>';
             }

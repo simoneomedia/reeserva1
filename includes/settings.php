@@ -13,6 +13,7 @@ function rsv_default_email_settings(){
         'admin_subject'    => __('New booking','reeserva'),
         'admin_body'       => __('New booking for {accommodation}: {guest_name}, {check_in} → {check_out}.','reeserva'),
         'footer'           => '',
+        'confirmation_text'=> '',
     ];
 }
 function rsv_get_email_settings(){
@@ -48,6 +49,7 @@ function rsv_render_email_form(){
         $s['admin_subject'] = sanitize_text_field($_POST['admin_subject'] ?? '');
         $s['admin_body']    = wp_kses_post($_POST['admin_body'] ?? '');
         $s['footer']        = wp_kses_post($_POST['footer'] ?? '');
+        $s['confirmation_text'] = wp_kses_post($_POST['confirmation_text'] ?? '');
         update_option('rsv_email_settings',$s);
         echo '<div class="updated"><p>'.esc_html__('Email settings saved.','reeserva').'</p></div>';
     }
@@ -71,12 +73,16 @@ function rsv_render_email_form(){
         <tr><th><?php esc_html_e('Subject','reeserva');?></th><td><input type="text" name="admin_subject" value="<?php echo esc_attr($s['admin_subject']);?>" class="regular-text"></td></tr>
         <tr><th><?php esc_html_e('Body','reeserva');?></th><td><textarea name="admin_body" rows="6" class="large-text code"><?php echo esc_textarea($s['admin_body']);?></textarea></td></tr>
       </tbody></table>
-      <h2><?php esc_html_e('Footer','reeserva');?></h2>
-      <p><textarea name="footer" rows="3" class="large-text code"><?php echo esc_textarea($s['footer']);?></textarea></p>
-      <p><button type="submit" name="rsv_email_save" class="button button-primary"><?php esc_html_e('Save email settings','reeserva');?></button></p>
-    </form>
-    <?php
-}
+        <h2><?php esc_html_e('Footer','reeserva');?></h2>
+        <p><textarea name="footer" rows="3" class="large-text code"><?php echo esc_textarea($s['footer']);?></textarea></p>
+        <h2><?php esc_html_e('On-page confirmation','reeserva');?></h2>
+        <table class="form-table"><tbody>
+          <tr><th><?php esc_html_e('Confirmation text','reeserva');?></th><td><textarea name="confirmation_text" rows="3" class="large-text code"><?php echo esc_textarea($s['confirmation_text']);?></textarea></td></tr>
+        </tbody></table>
+        <p><button type="submit" name="rsv_email_save" class="button button-primary"><?php esc_html_e('Save email settings','reeserva');?></button></p>
+      </form>
+      <?php
+  }
 
 function rsv_render_payment_form(){
     if (!current_user_can('manage_options')) return;
