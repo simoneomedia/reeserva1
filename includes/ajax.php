@@ -4,6 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 // Booked days (red blocks) per accommodation
 add_action('wp_ajax_rsv_get_booked','rsv_get_booked');
+add_action('wp_ajax_nopriv_rsv_get_booked','rsv_get_booked');
 function rsv_get_booked(){
     check_ajax_referer('rsv_get_booked','nonce');
     $type_id = intval($_GET['type_id'] ?? 0);
