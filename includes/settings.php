@@ -34,7 +34,7 @@ function rsv_get_payment_settings(){
     return wp_parse_args($s, $defaults);
 }
 
-function rsv_render_email_settings(){
+function rsv_render_email_form(){
     if (!current_user_can('manage_options')) return;
     $s = rsv_get_email_settings();
     if (isset($_POST['rsv_email_save'])){
@@ -51,7 +51,35 @@ function rsv_render_email_settings(){
         update_option('rsv_email_settings',$s);
         echo '<div class="updated"><p>'.esc_html__('Email settings saved.','reeserva').'</p></div>';
     }
+    ?>
+    <form method="post">
+      <?php wp_nonce_field('rsv_email_settings'); ?>
+      <h2><?php esc_html_e('General','reeserva');?></h2>
+      <table class="form-table"><tbody>
+        <tr><th><?php esc_html_e('From name','reeserva');?></th><td><input type="text" name="from_name" value="<?php echo esc_attr($s['from_name']);?>" class="regular-text"></td></tr>
+        <tr><th><?php esc_html_e('From email','reeserva');?></th><td><input type="email" name="from_email" value="<?php echo esc_attr($s['from_email']);?>" class="regular-text"></td></tr>
+      </tbody></table>
+      <h2><?php esc_html_e('Guest email','reeserva');?></h2>
+      <p><label><input type="checkbox" name="guest_enabled" <?php checked($s['guest_enabled']);?>> <?php esc_html_e('Enable guest confirmation email','reeserva');?></label></p>
+      <table class="form-table"><tbody>
+        <tr><th><?php esc_html_e('Subject','reeserva');?></th><td><input type="text" name="guest_subject" value="<?php echo esc_attr($s['guest_subject']);?>" class="regular-text"></td></tr>
+        <tr><th><?php esc_html_e('Body','reeserva');?></th><td><textarea name="guest_body" rows="6" class="large-text code"><?php echo esc_textarea($s['guest_body']);?></textarea></td></tr>
+      </tbody></table>
+      <h2><?php esc_html_e('Admin email','reeserva');?></h2>
+      <p><label><input type="checkbox" name="admin_enabled" <?php checked($s['admin_enabled']);?>> <?php esc_html_e('Enable admin notification email','reeserva');?></label></p>
+      <table class="form-table"><tbody>
+        <tr><th><?php esc_html_e('Subject','reeserva');?></th><td><input type="text" name="admin_subject" value="<?php echo esc_attr($s['admin_subject']);?>" class="regular-text"></td></tr>
+        <tr><th><?php esc_html_e('Body','reeserva');?></th><td><textarea name="admin_body" rows="6" class="large-text code"><?php echo esc_textarea($s['admin_body']);?></textarea></td></tr>
+      </tbody></table>
+      <h2><?php esc_html_e('Footer','reeserva');?></h2>
+      <p><textarea name="footer" rows="3" class="large-text code"><?php echo esc_textarea($s['footer']);?></textarea></p>
+      <p><button type="submit" name="rsv_email_save" class="button button-primary"><?php esc_html_e('Save email settings','reeserva');?></button></p>
+    </form>
+    <?php
+}
 
+function rsv_render_payment_form(){
+    if (!current_user_can('manage_options')) return;
     $p = rsv_get_payment_settings();
     if (isset($_POST['rsv_payment_save'])){
         check_admin_referer('rsv_payment_settings');
@@ -66,7 +94,38 @@ function rsv_render_email_settings(){
         update_option('rsv_payment_settings',$p);
         echo '<div class="updated"><p>'.esc_html__('Payment settings saved.','reeserva').'</p></div>';
     }
+    ?>
+    <form method="post">
+      <?php wp_nonce_field('rsv_payment_settings'); ?>
+      <h2><?php esc_html_e('Stripe','reeserva');?></h2>
+      <p><label><input type="checkbox" name="stripe_enabled" <?php checked($p['stripe_enabled']);?>> <?php esc_html_e('Enable Stripe payments','reeserva');?></label></p>
+      <table class="form-table"><tbody>
+        <tr><th><?php esc_html_e('Currency','reeserva');?></th><td>
+          <select name="currency">
+            <?php foreach(['eur'=>'EUR','usd'=>'USD','gbp'=>'GBP'] as $k=>$v): ?>
+              <option value="<?php echo esc_attr($k);?>" <?php selected($p['currency'],$k);?>><?php echo esc_html($v);?></option>
+            <?php endforeach; ?>
+          </select>
+        </td></tr>
+        <tr><th><?php esc_html_e('Publishable key','reeserva');?></th><td><input type="text" name="stripe_pk" value="<?php echo esc_attr($p['stripe_pk']);?>" class="regular-text"></td></tr>
+        <tr><th><?php esc_html_e('Secret key','reeserva');?></th><td><input type="text" name="stripe_sk" value="<?php echo esc_attr($p['stripe_sk']);?>" class="regular-text"></td></tr>
+        <tr><th><?php esc_html_e('Test mode','reeserva');?></th><td><label><input type="checkbox" name="test_mode" <?php checked($p['test_mode']);?>> <?php esc_html_e('Use test keys','reeserva');?></label></td></tr>
+      </tbody></table>
+      <h2><?php esc_html_e('PayPal','reeserva');?></h2>
+      <p><label><input type="checkbox" name="paypal_enabled" <?php checked($p['paypal_enabled']);?>> <?php esc_html_e('Enable PayPal payments','reeserva');?></label></p>
+      <table class="form-table"><tbody>
+        <tr><th><?php esc_html_e('PayPal email','reeserva');?></th><td><input type="email" name="paypal_email" value="<?php echo esc_attr($p['paypal_email']);?>" class="regular-text"></td></tr>
+      </tbody></table>
+      <h2><?php esc_html_e('Pay on arrival','reeserva');?></h2>
+      <p><label><input type="checkbox" name="arrival_enabled" <?php checked($p['arrival_enabled']);?>> <?php esc_html_e('Enable pay on arrival','reeserva');?></label></p>
+      <p><button type="submit" name="rsv_payment_save" class="button button-primary"><?php esc_html_e('Save payment settings','reeserva');?></button></p>
+      <p class="description"><?php esc_html_e('Tip: Create a Release tag (v1.x) on GitHub to ship updates.','reeserva');?></p>
+    </form>
+    <?php
+}
 
+function rsv_render_email_settings(){
+    if (!current_user_can('manage_options')) return;
     ?>
     <div class="wrap"><h1><?php esc_html_e('Email & Payments','reeserva');?></h1>
       <h2 class="nav-tab-wrapper">
@@ -74,60 +133,8 @@ function rsv_render_email_settings(){
         <a href="#payments" class="nav-tab" onclick="rsvTab(event,'payments')"><?php esc_html_e('Payments','reeserva');?></a>
       </h2>
 
-      <div id="tab-emails">
-        <form method="post">
-          <?php wp_nonce_field('rsv_email_settings'); ?>
-          <h2><?php esc_html_e('General','reeserva');?></h2>
-          <table class="form-table"><tbody>
-            <tr><th><?php esc_html_e('From name','reeserva');?></th><td><input type="text" name="from_name" value="<?php echo esc_attr($s['from_name']);?>" class="regular-text"></td></tr>
-            <tr><th><?php esc_html_e('From email','reeserva');?></th><td><input type="email" name="from_email" value="<?php echo esc_attr($s['from_email']);?>" class="regular-text"></td></tr>
-          </tbody></table>
-          <h2><?php esc_html_e('Guest email','reeserva');?></h2>
-          <p><label><input type="checkbox" name="guest_enabled" <?php checked($s['guest_enabled']);?>> <?php esc_html_e('Enable guest confirmation email','reeserva');?></label></p>
-          <table class="form-table"><tbody>
-            <tr><th><?php esc_html_e('Subject','reeserva');?></th><td><input type="text" name="guest_subject" value="<?php echo esc_attr($s['guest_subject']);?>" class="regular-text"></td></tr>
-            <tr><th><?php esc_html_e('Body','reeserva');?></th><td><textarea name="guest_body" rows="6" class="large-text code"><?php echo esc_textarea($s['guest_body']);?></textarea></td></tr>
-          </tbody></table>
-          <h2><?php esc_html_e('Admin email','reeserva');?></h2>
-          <p><label><input type="checkbox" name="admin_enabled" <?php checked($s['admin_enabled']);?>> <?php esc_html_e('Enable admin notification email','reeserva');?></label></p>
-          <table class="form-table"><tbody>
-            <tr><th><?php esc_html_e('Subject','reeserva');?></th><td><input type="text" name="admin_subject" value="<?php echo esc_attr($s['admin_subject']);?>" class="regular-text"></td></tr>
-            <tr><th><?php esc_html_e('Body','reeserva');?></th><td><textarea name="admin_body" rows="6" class="large-text code"><?php echo esc_textarea($s['admin_body']);?></textarea></td></tr>
-          </tbody></table>
-          <h2><?php esc_html_e('Footer','reeserva');?></h2>
-          <p><textarea name="footer" rows="3" class="large-text code"><?php echo esc_textarea($s['footer']);?></textarea></p>
-          <p><button type="submit" name="rsv_email_save" class="button button-primary"><?php esc_html_e('Save email settings','reeserva');?></button></p>
-        </form>
-      </div>
-
-      <div id="tab-payments" style="display:none">
-        <form method="post">
-          <?php wp_nonce_field('rsv_payment_settings'); ?>
-          <h2><?php esc_html_e('Stripe','reeserva');?></h2>
-          <p><label><input type="checkbox" name="stripe_enabled" <?php checked($p['stripe_enabled']);?>> <?php esc_html_e('Enable Stripe payments','reeserva');?></label></p>
-          <table class="form-table"><tbody>
-            <tr><th><?php esc_html_e('Currency','reeserva');?></th><td>
-              <select name="currency">
-                <?php foreach(['eur'=>'EUR','usd'=>'USD','gbp'=>'GBP'] as $k=>$v): ?>
-                  <option value="<?php echo esc_attr($k);?>" <?php selected($p['currency'],$k);?>><?php echo esc_html($v);?></option>
-                <?php endforeach; ?>
-              </select>
-            </td></tr>
-            <tr><th><?php esc_html_e('Publishable key','reeserva');?></th><td><input type="text" name="stripe_pk" value="<?php echo esc_attr($p['stripe_pk']);?>" class="regular-text"></td></tr>
-            <tr><th><?php esc_html_e('Secret key','reeserva');?></th><td><input type="text" name="stripe_sk" value="<?php echo esc_attr($p['stripe_sk']);?>" class="regular-text"></td></tr>
-            <tr><th><?php esc_html_e('Test mode','reeserva');?></th><td><label><input type="checkbox" name="test_mode" <?php checked($p['test_mode']);?>> <?php esc_html_e('Use test keys','reeserva');?></label></td></tr>
-          </tbody></table>
-          <h2><?php esc_html_e('PayPal','reeserva');?></h2>
-          <p><label><input type="checkbox" name="paypal_enabled" <?php checked($p['paypal_enabled']);?>> <?php esc_html_e('Enable PayPal payments','reeserva');?></label></p>
-          <table class="form-table"><tbody>
-            <tr><th><?php esc_html_e('PayPal email','reeserva');?></th><td><input type="email" name="paypal_email" value="<?php echo esc_attr($p['paypal_email']);?>" class="regular-text"></td></tr>
-          </tbody></table>
-          <h2><?php esc_html_e('Pay on arrival','reeserva');?></h2>
-          <p><label><input type="checkbox" name="arrival_enabled" <?php checked($p['arrival_enabled']);?>> <?php esc_html_e('Enable pay on arrival','reeserva');?></label></p>
-          <p><button type="submit" name="rsv_payment_save" class="button button-primary"><?php esc_html_e('Save payment settings','reeserva');?></button></p>
-          <p class="description"><?php esc_html_e('Tip: Create a Release tag (v1.x) on GitHub to ship updates.','reeserva');?></p>
-        </form>
-      </div>
+      <div id="tab-emails"><?php rsv_render_email_form(); ?></div>
+      <div id="tab-payments" style="display:none"><?php rsv_render_payment_form(); ?></div>
     </div>
     <script>
     function rsvTab(e,id){e.preventDefault();document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('nav-tab-active'));
