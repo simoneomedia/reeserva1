@@ -47,11 +47,11 @@ add_shortcode('rsv_checkout', function(){
     $co = sanitize_text_field($_GET['co'] ?? ($_POST['co'] ?? ''));
 
     // Handle Stripe return
-    if (isset($_GET['rsv_stripe']) && $_GET['rsv_stripe']==='return' && !empty($_GET['session_id'])){
-        $session = rsv_stripe_retrieve_session(sanitize_text_field($_GET['session_id']));
+    if (isset($_GET['rsv_stripe']) && $_GET['rsv_stripe']==='return' && !empty($_GET['pi'])){
+        $intent = rsv_stripe_retrieve_intent(sanitize_text_field($_GET['pi']));
         echo '<div class="ehb-wizard"><div class="steps"><div class="step active">1</div><div class="line active"></div><div class="step active">2</div><div class="line active"></div><div class="step active">3</div></div>';
         echo '<div class="card">';
-        if($session && ($session['payment_status'] ?? '') === 'paid'){
+        if($intent && ($intent['status'] ?? '') === 'succeeded'){
             $accomm_id = intval($_GET['accomm'] ?? 0);
             $ci = sanitize_text_field($_GET['ci'] ?? '');
             $co = sanitize_text_field($_GET['co'] ?? '');
@@ -61,9 +61,9 @@ add_shortcode('rsv_checkout', function(){
             $phone = sanitize_text_field($_GET['phone'] ?? '');
             $notes = sanitize_text_field($_GET['notes'] ?? '');
             $full = trim($first.' '.$last);
-            // Create booking if not exists with same session id
+            // Create booking if not exists with same intent id
             $exists = get_posts(['post_type'=>'rsv_booking','post_status'=>['confirmed','publish'],'numberposts'=>1,
-                'meta_query'=>[['key'=>'rsv_stripe_session','value'=>sanitize_text_field($_GET['session_id']),'compare'=>'=']]]);
+                'meta_query'=>[['key'=>'rsv_stripe_intent','value'=>sanitize_text_field($_GET['pi']),'compare'=>'=']]]);
             if(!$exists){
                 $bid = wp_insert_post(['post_type'=>'rsv_booking','post_status'=>'confirmed','post_title'=>sprintf(__('Booking: %s %s','reeserva'), $first,$last),'post_content'=>$notes]);
                 if(!is_wp_error($bid) && $bid){
@@ -76,7 +76,7 @@ add_shortcode('rsv_checkout', function(){
                     update_post_meta($bid,'rsv_guest_phone',$phone);
                     update_post_meta($bid,'rsv_payment_status','paid');
                     update_post_meta($bid,'rsv_payment_method','stripe');
-                    update_post_meta($bid,'rsv_stripe_session',sanitize_text_field($_GET['session_id']));
+                    update_post_meta($bid,'rsv_stripe_intent',sanitize_text_field($_GET['pi']));
                     do_action('rsv_booking_confirmed', $bid, ['accomm'=>$accomm_id,'ci'=>$ci,'co'=>$co,'first_name'=>$first,'last_name'=>$last,'email'=>$email,'phone'=>$phone]);
                     echo '<div class="confirm"><div class="badge">✔</div><h3>'.esc_html__('Booking confirmed','reeserva').'</h3>';
                     echo '<p><strong>'.esc_html__('Reference','reeserva').':</strong> '.intval($bid).'</p>';
@@ -206,9 +206,10 @@ add_shortcode('rsv_checkout', function(){
         echo '<label>'.esc_html__('Notes (optional)','reeserva').'<textarea name="notes" rows="3"></textarea></label>';
         $p = rsv_get_payment_settings();
         if ($p['stripe_enabled']){
+            echo '<div id="rsv-card-element" style="margin-bottom:15px"></div>';
             echo '<button type="button" id="rsv-pay" class="btn-primary">'.esc_html__('Pay with card','reeserva').'</button>';
             echo '<script src="https://js.stripe.com/v3/"></script>';
-            echo '<script>document.getElementById("rsv-pay").addEventListener("click", function(){var f=document.getElementById("rsv-booking-form");var fd=new FormData(f);fd.append("action","rsv_stripe_checkout");fetch("'.esc_js(admin_url('admin-ajax.php')).'",{method:"POST",body:fd,credentials:"same-origin"}).then(r=>r.json()).then(function(res){if(res&&res.success&&res.data&&res.data.url){window.location=res.data.url;}else{alert("Stripe error: "+(res&&(res.data&&res.data.message||res.message)||"unknown"));}}).catch(function(){alert("Network error");});});</script>';
+            echo '<script>(function(){var stripe=Stripe("'.esc_js($p['stripe_pk']).'");var elements=stripe.elements();var card=elements.create("card");card.mount("#rsv-card-element");document.getElementById("rsv-pay").addEventListener("click",function(){var f=document.getElementById("rsv-booking-form");var fd=new FormData(f);fd.append("action","rsv_stripe_checkout");fetch("'.esc_js(admin_url('admin-ajax.php')).'",{method:"POST",body:fd,credentials:"same-origin"}).then(r=>r.json()).then(function(res){if(res&&res.success&&res.data&&res.data.client_secret&&res.data.return_url){stripe.confirmCardPayment(res.data.client_secret,{payment_method:{card:card,billing_details:{name:f.first_name.value+" "+f.last_name.value,email:f.email.value}}}).then(function(result){if(result.error){alert(result.error.message);}else{window.location=res.data.return_url;}});}else{alert("Stripe error: "+(res&&(res.data&&res.data.message||res.message)||"unknown"));}}).catch(function(){alert("Network error");});});})();</script>';
         }
         if ($p['paypal_enabled']){
             echo '<button type="button" id="rsv-paypal" class="btn-primary">'.esc_html__('Pay with PayPal','reeserva').'</button>';
