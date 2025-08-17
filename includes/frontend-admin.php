@@ -115,7 +115,7 @@ add_shortcode('rsv_new_accommodation', function(){
     }
 
     echo '</div></div>';
-=======
+});
 function rsv_frontend_admin_assets(){
     if ( ! current_user_can('manage_options') ) return;
     if ( function_exists('rsv_admin_enqueue') ) rsv_admin_enqueue();
@@ -144,5 +144,5 @@ add_shortcode('rsv_admin_dashboard', function(){
       </div>
     </div>
     <?php
-    return ob_get_clean();
+    return ob_get_clean(); 
 });
