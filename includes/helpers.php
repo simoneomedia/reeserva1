@@ -85,7 +85,14 @@ function rsv_pricing_map_for_day($accomm_id, $day){
             }
         }
     }
-    $bp =  floatval(get_post_meta($rates[0]->ID ?? 0,'rsv_base_price',true) ?? 0);
+    if (empty($rates)) {
+        return ['periods'=>[], 'prices'=>[]];
+    }
+    $raw_bp = get_post_meta($rates[0]->ID,'rsv_base_price',true);
+    $bp = $raw_bp === '' ? 0 : floatval($raw_bp);
+    if ($bp <= 0) {
+        return ['periods'=>[], 'prices'=>[]];
+    }
     return ['periods'=>[1],'prices'=>[$bp]];
 }
 function rsv_nightly_price_for_day($accomm_id,$day,$total_nights){
