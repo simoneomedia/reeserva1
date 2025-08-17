@@ -1,0 +1,10 @@
+.rsv-accomm{max-width:800px;margin:0 auto;font-family:Arial,sans-serif;}
+.rsv-hero-wrap img{width:100%;height:auto;border-radius:12px;}
+.rsv-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:20px 0;}
+.rsv-gallery img{width:100%;height:100%;object-fit:cover;border-radius:8px;}
+.rsv-desc{margin-top:20px;}
+.rsv-info{display:flex;gap:20px;flex-wrap:wrap;margin:20px 0;}
+.rsv-info p{margin:0;font-weight:bold;}
+.rsv-amenities{list-style:none;padding:0;margin:20px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;}
+.rsv-amenities li{background:#f7f7f7;padding:8px 12px;border-radius:6px;}
+#rsv-calendar{margin-top:30px;}

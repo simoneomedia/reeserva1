@@ -231,3 +231,44 @@ add_filter('the_content', function($content){
     $out .= '</ul>';
     return $content.$out;
 });
+
+// Replace accommodation content with custom layout
+add_filter('the_content', function($content){
+    if('rsv_accomm' !== get_post_type()) return $content;
+    $id = get_the_ID();
+    $gallery = (array) get_post_meta($id,'rsv_gallery',true) ?: [];
+    $max = intval(get_post_meta($id,'rsv_max_guests',true));
+    $checkin = get_post_meta($id,'rsv_checkin',true);
+    $checkout = get_post_meta($id,'rsv_checkout',true);
+    $amenities = (array) get_post_meta($id,'rsv_amenities',true) ?: [];
+    $amen_labels = array_intersect_key(rsv_default_amenities(), array_flip($amenities));
+    ob_start();
+    echo '<div class="rsv-accomm">';
+    $thumb = get_the_post_thumbnail($id,'large',['class'=>'rsv-hero']);
+    if($thumb){ echo '<div class="rsv-hero-wrap">'.$thumb.'</div>'; }
+    if($gallery){ echo '<div class="rsv-gallery">'; foreach($gallery as $url){ echo '<img src="'.esc_url($url).'" alt="">'; } echo '</div>'; }
+    echo '<div class="rsv-desc">'.$content.'</div>';
+    echo '<div class="rsv-info">';
+    if($max){ echo '<p>'.sprintf(esc_html__('Max guests: %d','reeserva'), $max).'</p>'; }
+    if($checkin){ echo '<p>'.sprintf(esc_html__('Check-in: %s','reeserva'), esc_html($checkin)).'</p>'; }
+    if($checkout){ echo '<p>'.sprintf(esc_html__('Check-out: %s','reeserva'), esc_html($checkout)).'</p>'; }
+    echo '</div>';
+    if($amen_labels){ echo '<ul class="rsv-amenities">'; foreach($amen_labels as $label){ echo '<li>'.esc_html($label).'</li>'; } echo '</ul>'; }
+    echo '<div id="rsv-calendar"></div>';
+    echo '</div>';
+    return ob_get_clean();
+},20);
+
+// Enqueue assets for accommodation layout
+add_action('wp_enqueue_scripts', function(){
+    if(!is_singular('rsv_accomm')) return;
+    wp_enqueue_style('rsv-accommodation', RSV_URL.'assets/css/accommodation.css', [], RSV_VER);
+    wp_enqueue_style('fullcalendar', 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css', [], '6.1.11');
+    wp_enqueue_script('fullcalendar', 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js', [], '6.1.11', true);
+    wp_enqueue_script('rsv-accommodation', RSV_URL.'assets/js/single-accomm.js', ['fullcalendar'], RSV_VER, true);
+    wp_localize_script('rsv-accommodation', 'RSV_SINGLE', [
+        'ajax_url' => admin_url('admin-ajax.php'),
+        'nonce'    => wp_create_nonce('rsv_get_booked'),
+        'id'       => get_the_ID(),
+    ]);
+});
